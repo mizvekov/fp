@@ -30,12 +30,25 @@
 #include <type_traits>
 #include <cmath>
 
+namespace stdx {
+#define DECL template<class T, class U>
+	DECL struct plus       { constexpr auto operator()(const T& x, const U& y) { return x + y; } };
+	DECL struct minus      { constexpr auto operator()(const T& x, const U& y) { return x - y; } };
+	DECL struct multiplies { constexpr auto operator()(const T& x, const U& y) { return x * y; } };
+	DECL struct divides    { constexpr auto operator()(const T& x, const U& y) { return x / y; } };
+	DECL struct modulus    { constexpr auto operator()(const T& x, const U& y) { return x % y; } };
+	DECL struct bit_and    { constexpr auto operator()(const T& x, const U& y) { return x & y; } };
+	DECL struct bit_or     { constexpr auto operator()(const T& x, const U& y) { return x | y; } };
+	DECL struct bit_xor    { constexpr auto operator()(const T& x, const U& y) { return x ^ y; } };
+
+	DECL struct equal_to { constexpr auto operator()(const T& x, const U& y) { return x == y; } };
+	DECL struct less     { constexpr auto operator()(const T& x, const U& y) { return x <  y; } };
+#undef DECL
+};
+
 template<class T, int E = 0> struct fp {
 	using base_type = T;
-	using promoted_type = decltype(+T());
 	static constexpr auto exp = E;
-
-	static_assert(std::is_integral<base_type>{}, "base_type must be integral");
 
 	// Public Constructors
 	fp() = default;
@@ -53,17 +66,17 @@ template<class T, int E = 0> struct fp {
 	template<class B> constexpr auto& operator =(const B &b) { return base = fp<T,E>(b).base, *this; }
 
 #define DECL template<class A, class B> friend constexpr
-	DECL auto operator+(const A &a, const B &b) { return bin_op<max,std::plus      >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator-(const A &a, const B &b) { return bin_op<max,std::minus     >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator*(const A &a, const B &b) { return bin_op<sum,std::multiplies>(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator/(const A &a, const B &b) { return bin_op<sub,std::divides   >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator%(const A &a, const B &b) { return bin_op<max,std::modulus   >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator&(const A &a, const B &b) { return bin_op<max,std::bit_and   >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator|(const A &a, const B &b) { return bin_op<max,std::bit_or    >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator^(const A &a, const B &b) { return bin_op<max,std::bit_xor   >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator+(const A &a, const B &b) { return bin_op<max,stdx::plus      >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator-(const A &a, const B &b) { return bin_op<max,stdx::minus     >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator*(const A &a, const B &b) { return bin_op<sum,stdx::multiplies>(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator/(const A &a, const B &b) { return bin_op<sub,stdx::divides   >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator%(const A &a, const B &b) { return bin_op<max,stdx::modulus   >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator&(const A &a, const B &b) { return bin_op<max,stdx::bit_and   >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator|(const A &a, const B &b) { return bin_op<max,stdx::bit_or    >(proxy<B>(a), proxy<A>(b)); }
+	DECL auto operator^(const A &a, const B &b) { return bin_op<max,stdx::bit_xor   >(proxy<B>(a), proxy<A>(b)); }
 
-	DECL bool operator==(const A &a, const B &b) { return bin_op_raw<min,std::equal_to>(proxy<B>(a), proxy<A>(b)); }
-	DECL bool operator <(const A &a, const B &b) { return bin_op_raw<min,std::less    >(proxy<B>(a), proxy<A>(b)); }
+	DECL bool operator==(const A &a, const B &b) { return bin_op_raw<min,stdx::equal_to>(proxy<B>(a), proxy<A>(b)); }
+	DECL bool operator <(const A &a, const B &b) { return bin_op_raw<min,stdx::less    >(proxy<B>(a), proxy<A>(b)); }
 
 	DECL bool operator<=(const A &a, const B &b) { return a == b || a <  b; }
 	DECL bool operator!=(const A &a, const B &b) { return !(a == b); }
@@ -71,12 +84,12 @@ template<class T, int E = 0> struct fp {
 	DECL bool operator>=(const A &a, const B &b) { return !(a <  b); }
 #undef DECL
 
-	template<class B> constexpr auto operator<<(const B &b) const { return fp<promoted_type,E>(base << b, {}); }
-	template<class B> constexpr auto operator>>(const B &b) const { return fp<promoted_type,E>(base >> b, {}); }
+	template<class B> constexpr auto operator<<(const B &b) const { return make_fp_raw<E>(base << b); }
+	template<class B> constexpr auto operator>>(const B &b) const { return make_fp_raw<E>(base >> b); }
 
-	constexpr auto operator+() const { return fp<promoted_type,E>(+base, {}); }
-	constexpr auto operator-() const { return fp<promoted_type,E>(-base, {}); }
-	constexpr auto operator~() const { return fp<promoted_type,E>(~base, {}); }
+	constexpr auto operator+() const { return make_fp_raw<E>(+base); }
+	constexpr auto operator-() const { return make_fp_raw<E>(-base); }
+	constexpr auto operator~() const { return make_fp_raw<E>(~base); }
 	//
 
 	// These implement the remaining operators based on the previous ones
@@ -97,13 +110,11 @@ template<class T, int E = 0> struct fp {
 private:
 	template<class A, int Ea> friend struct fp;
 
-	template<class A, class B> using conv_type = decltype(A() + B());
-
 	// Exponent Operations
-	template<int Ea, int Eb> struct max { enum { e = Ea > Eb ? Ea : Eb, ea = e - Ea, eb = e - Eb }; };
-	template<int Ea, int Eb> struct min { enum { e = Ea < Eb ? Ea : Eb, ea = e - Ea, eb = e - Eb }; };
-	template<int Ea, int Eb> struct sum { enum { e = Ea + Eb, ea = 0, eb = 0 }; };
-	template<int Ea, int Eb> struct sub { enum { e = Ea - Eb, ea = 0, eb = 0 }; };
+	template<int Ea, int Eb> struct max { enum { e = Ea > Eb ? Ea : Eb, ea = e , eb = e  }; };
+	template<int Ea, int Eb> struct min { enum { e = Ea < Eb ? Ea : Eb, ea = e , eb = e  }; };
+	template<int Ea, int Eb> struct sum { enum { e = Ea + Eb          , ea = Ea, eb = Eb }; };
+	template<int Ea, int Eb> struct sub { enum { e = Ea - Eb          , ea = Ea, eb = Eb }; };
 	//
 
 	// proxy overloads
@@ -119,33 +130,34 @@ private:
 	//
 
 	// Scaling overload set
-	template<class U, int Er, class Ta, class Tb = conv_type<Ta,U>>
+	template<class U, int Er, class Ta, class Tb = decltype(Ta() + U())>
 	static constexpr std::enable_if_t<std::is_integral<U>{}, U>
-	scale(const Ta &a, std::enable_if_t<std::is_integral<Tb>{}>* = 0)
+	scale(const Ta &a, std::enable_if_t<std::is_integral<Ta>{}>* = 0)
 	{ return Er > 0 ? Tb(a) << Er : Tb(a) >> -Er; }
 
-	template<class U, int Er, class Ta, class Tb = conv_type<Ta,U>>
+	template<class U, int Er, class Ta, class Tb = decltype(Ta() + U())>
 	static constexpr std::enable_if_t<std::is_floating_point<U>{}, U>
-	scale(const Ta &a, std::enable_if_t<std::is_floating_point<Tb>{}>* = 0)
-	{ return Tb(a) * exp2<Er,Tb>::value; }
+	scale(const Ta &a) { return Tb(a) * exp2<Er,Tb>::value; }
 
 	// Optional rounding should be performed here, but unfortunately std::lround is not mandated to be constexpr.
-	template<class U, int Er, class Ta, class Tb = conv_type<Ta,U>>
-	static constexpr std::enable_if_t<std::is_integral<U>{}, U>
-	scale(const Ta &a, std::enable_if_t<std::is_floating_point<Tb>{}>* = 0)
-	{ return /*std::llround*/(scale<Tb,Er>(a)); }
+	template<class U, int Er, class Ta> static constexpr std::enable_if_t<std::is_integral<U>{}, U>
+	scale(const Ta &a, std::enable_if_t<std::is_floating_point<Ta>{}>* = 0)
+	{ return /*std::llround*/(scale<Ta,Er>(a)); }
 	//
 
+	template<int Ea, class A> static constexpr fp<A,Ea> make_fp_raw(const A &a) { return { a, {} }; }
+	template<class A> using promote = decltype(+A());
+
 	// Generic Binary Operator Implementation
-	template<template<int,int> class EOP, template<class> class BOP, class A, int Ea, class B, int Eb>
+	template<template<int,int> class EOP, template<class,class> class BOP, class A, int Ea, class B, int Eb>
 	static constexpr auto bin_op_raw(const fp<A,Ea> &a, const fp<B,Eb> &b) {
-		using rt = conv_type<A, B>;
-		return BOP<rt>()(scale<rt,EOP<Ea,Eb>::ea>(a.base), scale<rt,EOP<Ea,Eb>::eb>(b.base));
+		fp<promote<A>, EOP<Ea, Eb>::ea> sa = a;
+		fp<promote<B>, EOP<Ea, Eb>::eb> sb = b;
+		return BOP<decltype(sa.base),decltype(sb.base)>()(sa.base, sb.base);
 	}
-	template<template<int,int> class EOP, template<class> class BOP, class A, int Ea, class B, int Eb>
+	template<template<int,int> class EOP, template<class,class> class BOP, class A, int Ea, class B, int Eb>
 	static constexpr auto bin_op(const fp<A,Ea> &a, const fp<B,Eb> &b) {
-		using rt = conv_type<A, B>;
-		return fp<rt, EOP<Ea,Eb>::e>(bin_op_raw<EOP,BOP>(a, b), {});
+		return make_fp_raw<EOP<Ea,Eb>::e>(bin_op_raw<EOP,BOP>(a, b));
 	}
 	//
 

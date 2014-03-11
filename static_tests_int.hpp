@@ -24,8 +24,8 @@
  */
 
 
-#ifndef MIZVEKOV_FP_STATIC_TESTS_INCLUDE_HPP_INCLUDED
-#define MIZVEKOV_FP_STATIC_TESTS_INCLUDE_HPP_INCLUDED
+#ifndef MIZVEKOV_FP_STATIC_TESTS_INT_INCLUDE_HPP_INCLUDED
+#define MIZVEKOV_FP_STATIC_TESTS_INT_INCLUDE_HPP_INCLUDED
 
 #include <cstdint>
 #include <limits>
@@ -125,17 +125,19 @@ static_assert((fp<uint64_t,12>(1) << 2).exp == 12, "");
 static_assert((fp<uint64_t,10>(1) >> 2).exp == 10, "");
 /**********************************************************************************************************************/
 
-static constexpr fp<uint16_t,10> t1 = 1;
-static constexpr fp<uint32_t,12> t2 = 2;
-static constexpr fp<uint64_t,16> t3 = 7.25;
-static constexpr auto t4 = 3 + t1 + t3 - t2;
-static_assert(t4 == 9.25, "");
-static_assert(std::is_same<decltype(t4)::base_type, uint64_t>::value, "");
-static_assert(t4.exp == 16, "");
+class int_test {
+	static constexpr fp<uint16_t,10> t1 = 1;
+	static constexpr fp<uint32_t,12> t2 = 2;
+	static constexpr fp<uint64_t,16> t3 = 7.25;
+	static constexpr auto t4 = 3 + t1 + t3 - t2;
+	static_assert(t4 == 9.25, "");
+	static_assert(std::is_same<decltype(t4)::base_type, uint64_t>::value, "");
+	static_assert(t4.exp == 16, "");
 
-static constexpr auto t5 = 2.75 * fp<uint32_t,8>(10.25);
-static_assert(std::is_same<decltype(t5)::base_type, uint32_t>::value, "");
-static_assert(t5.exp == 16, "");
-static_assert(t5 == 2.75 * 10.25, "");
+	static constexpr auto t5 = 2.75 * fp<uint32_t,8>(10.25);
+	static_assert(std::is_same<decltype(t5)::base_type, uint32_t>::value, "");
+	static_assert(t5.exp == 16, "");
+	static_assert(t5 == 2.75 * 10.25, "");
+};
 
 #endif

@@ -27,7 +27,8 @@
 #include "catch.hpp"
 
 #include "fp.hpp"
-#include "static_tests.hpp"
+#include "static_tests_int.hpp"
+#include "static_tests_float.hpp"
 
 TEST_CASE( "fp tests", "[fp]" ) {
 	fp<uint16_t,8> a = 1.25;
@@ -55,5 +56,5 @@ TEST_CASE( "fp tests", "[fp]" ) {
 	auto c = a * b;
 	REQUIRE( double(c) == 0.3125 );
 
-	REQUIRE( (double(M_PI) - double(fp<uint64_t,32>(M_PI))) <= 2e-10 );
+	REQUIRE( fabs(double(M_PI) - double(fp<uint64_t,32>(M_PI))) <= 2e-10 );
 }

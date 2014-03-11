@@ -3,8 +3,10 @@ C++14 Fixed Point Library
 
 This is a C++14 header-only fixed-point arithmetic library.
 
-With this library, the following examples become possible:
+It's purpose is to wrap another type and provide fixed point arithmetic
+support on top of it.
 
+The following is a sample of what can be achieved by employing this library:
 ```c++
 fp<int,4> x = 3.25;
 fp<char,8> y = 0.75;
@@ -29,9 +31,12 @@ Description
 ------------------
 
 It implements a template class type `fp<T,E>` where `T` is an underlying
-integral type and `E` is an integer representing the binary point position.
+arithmetic type and `E` is an integer representing the binary point position.
 From now on these will be referred as the base type and the exponent,
 for `T` and `E` respectively.
+
+The base type currently is limited to only fundamental integers and floats,
+although in the future it is hoped to support user-defined types.
 
 It supports casting between integral and floating point types
 and the whole set of arithmetic, bitwise and relational operators.
@@ -53,7 +58,7 @@ When mixing *fp* numbers of different base types, the following rules apply:
 apply between the base types of both operands. For example, the expression
 `fp<char,0>(10) + fp<char,0>(20)` has type `fp<int,0>`
 
-* In the case of unary operators, the normal promotion rules apply to the
+* In case of unary operators, the normal promotion rules apply to the
 base type. For example, the expression `+fp<char,0>` has type `fp<int,0>`
 
 In case of binary operations, the exponent of the result depends on the
