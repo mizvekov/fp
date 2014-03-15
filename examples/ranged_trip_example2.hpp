@@ -23,41 +23,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
 
-#include "fp.hpp"
-#include "static_tests_int.hpp"
-#include "static_tests_float.hpp"
-#include "static_tests_ranged.hpp"
-#include "static_tests_ranged_fp.hpp"
-#include "static_tests_totem.hpp"
+#ifndef MIZVEKOV_RANGED_TRIP_EXAMPLE2_INCLUDE_HPP_INCLUDED
+#define MIZVEKOV_RANGED_TRIP_EXAMPLE2_INCLUDE_HPP_INCLUDED
 
-TEST_CASE( "fp tests", "[fp]" ) {
-	fp<uint16_t,8> a = 1.25;
-	REQUIRE( double(a) == 1.250 );
+#include "ranged.hpp"
+#include <cstdint>
 
-	a += fp<uint16_t,8>(0.25);
-	REQUIRE( double(a) == 1.500 );
+struct ranged_trip_example1 {
+	static constexpr auto test1 = ranged<int, -20, 50>{ 10 };
 
-	a += fp<uint16_t,4>(0.125);
-	REQUIRE( double(a) == 1.625 );
+	// will trip a compile error because test1 could
+	// have a value up to 50, but test2 only accepts
+	// values up to 49
+	static constexpr ranged<int, -20, 49> test2 = test1;
 
-	--a;
-	REQUIRE( double(a) == 0.625 );
+	static_assert(test2 == ranged<int>{ 10 }, "");
+};
 
-	fp<int16_t,8> b;
-	b = 0.75;
-	REQUIRE( double(b) == 0.750 );
-
-	b -= fp<int16_t,8>(1.25);
-	REQUIRE( double(b) == -0.500 );
-
-	b++;
-	REQUIRE( double(b) == 0.500 );
-
-	auto c = a * b;
-	REQUIRE( double(c) == 0.3125 );
-
-	REQUIRE( fabs(double(M_PI) - double(fp<uint64_t,32>(M_PI))) <= 2e-10 );
-}
+#endif

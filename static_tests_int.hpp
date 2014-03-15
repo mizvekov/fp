@@ -36,7 +36,7 @@ static_assert(std::is_standard_layout<fp<uint32_t,0>>::value, "fp<uint32_t> must
 /**********************************************************************************************************************/
 
 /********************** Construction and cast tests *******************************************************************/
-#define TEST(T,E,V) static_assert((decltype(V))(fp<T,E>(V)) == V, "")
+#define TEST(T,E,V) static_assert(decltype(V)(fp<T,E>(V)) == V, "")
 TEST(uint32_t, 16, std::numeric_limits<uint8_t>::min());
 TEST(uint32_t, 16, std::numeric_limits<uint8_t>::max());
 TEST(uint32_t, 16, std::numeric_limits<int8_t>::max());
@@ -63,7 +63,7 @@ TEST(uint8_t, -4, 1024);
 /**********************************************************************************************************************/
 
 /******* Relational operators tests ***********************************************************************************/
-static_assert(fp<uint16_t,10>(8.25) == 8.25, "");
+static_assert(fp<uint16_t,10>(8.25) == fp<uint16_t,8>(8.25), "");
 static_assert(fp<uint16_t,10>(8.25) == fp<uint32_t,16>(8.25), "");
 static_assert(fp<uint16_t,10>(8.25) != fp<uint32_t,16>(8.26), "");
 static_assert(fp<uint16_t,10>(8.25) < fp<uint32_t,16>(10.25), "");
@@ -77,34 +77,34 @@ static_assert(fp<uint64_t,10>(4.750) >= fp<uint32_t,16>(4.750), "");
 
 /**************** Unary operators tests *******************************************************************************/
 static_assert(+fp<uint64_t,10>(4.750) == fp<uint32_t,16>(4.750), "");
-static_assert(~fp<uint32_t,0>(0xDEADBEEF) == ~0xDEADBEEF, "");
+static_assert(~fp<uint32_t,0>(0xDEADBEEF) == fp<uint64_t,-8>(~0xDEADBEEF), "");
 static_assert((+fp<uint64_t,10>(0)).exp == 10, "");
 static_assert((~fp<uint32_t,-5>(0)).exp == -5, "");
 static_assert(std::is_same<decltype(+fp<uint8_t,8>())::base_type, decltype(+uint8_t())>::value, "");
 /**********************************************************************************************************************/
 
 /*********************** Binary operators tests ***********************************************************************/
-static_assert(fp<uint32_t,16>(5.25) + 4.75 == 10, "");
-static_assert(7 == 1 + fp<uint32_t,16>(6), "");
-static_assert(fp<uint32_t,16>(5.25) - 4.75 == fp<uint8_t,4>(0.5), "");
-static_assert(fp<uint32_t,14>(7) - fp<uint32_t,12>(5) == 2.0, "");
-static_assert(4.75 * fp<uint32_t,8>(5.25) == 24.9375, "");
-static_assert(fp<uint32_t,16>(24.9375) / fp<uint32_t,8>(5.25) == 4.75, "");
-static_assert(fp<uint32_t,16>(18.5) % fp<uint32_t,16>(4.25) == 1.5, "");
+static_assert(fp<uint32_t,16>(5.25) + fp<uint32_t,8>(4.75) == fp<uint32_t>(10), "");
+static_assert(fp<uint32_t>(7) == fp<uint32_t>(1) + fp<uint32_t,16>(6), "");
+static_assert(fp<uint32_t,16>(5.25) - fp<uint32_t,8>(4.75) == fp<uint8_t,4>(0.5), "");
+static_assert(fp<uint32_t,14>(7) - fp<uint32_t,12>(5) == fp<uint32_t>(2.0), "");
+static_assert(fp<uint32_t,4>(4.75) * fp<uint32_t,8>(5.25) == fp<uint32_t,10>(24.9375), "");
+static_assert(fp<uint32_t,16>(24.9375) / fp<uint32_t,8>(5.25) == fp<uint32_t,4>(4.75), "");
+static_assert(fp<uint32_t,16>(18.5) % fp<uint32_t,8>(4.25) == fp<uint32_t,2>(1.5), "");
 
 static_assert(fp<uint32_t,10>(8.0) == fp<uint16_t,4>(80) / fp<uint32_t,6>(10), "");
-static_assert(fp<uint32_t,16>(18.5) == fp<uint32_t,16>(185) / 10, "");
+static_assert(fp<uint32_t,16>(18.5) == fp<uint32_t,16>(185) / fp<uint32_t>(10), "");
 
-static_assert((fp<uint32_t,8>(0xDEAD) & 0x7777) == 0x5625, "");
-static_assert((fp<uint16_t,8>(9.640625) & fp<uint16_t,8>(0xFF, {})) == 0.640625, "");
-static_assert((fp<uint32_t,8>(0x5625) | 0x8888) == 0xDEAD, "");
-static_assert((fp<uint32_t,8>(0xDEAD) ^ 0x6042) == 0xBEEF, "");
+static_assert((fp<uint32_t,8>(0xDEAD) & fp<uint32_t>(0x7777)) == fp<uint32_t>(0x5625), "");
+static_assert((fp<uint16_t,8>(9.640625) & fp<uint16_t,8>(0xFF, {})) == fp<uint16_t,8>(0.640625), "");
+static_assert((fp<uint32_t,8>(0x5625) | fp<uint32_t>(0x8888)) == fp<uint32_t,8>(0xDEAD), "");
+static_assert((fp<uint32_t,8>(0xDEAD) ^ fp<uint32_t>(0x6042)) == fp<uint32_t,8>(0xBEEF), "");
 
-static_assert(33 == (fp<uint32_t,8>(8.25) << 2), "");
-static_assert((fp<uint32_t,8>(33) >> 2) == 8.25, "");
+static_assert(fp<uint32_t,8>(33) == (fp<uint32_t,8>(8.25) << 2), "");
+static_assert((fp<uint32_t,8>(33) >> 2) == fp<uint32_t,8>(8.25), "");
 
-static_assert(fp<uint32_t,8>(8.25).vshift< 2>() == 33, "");
-static_assert(fp<uint32_t,8>(33  ).vshift<-2>() == 8.25, "");
+static_assert(fp<uint32_t,8>(8.25).scale< 2>() == fp<uint32_t,4>(33), "");
+static_assert(fp<uint32_t,8>(33  ).scale<-2>() == fp<uint32_t,4>(8.25), "");
 
 static_assert(std::is_same<decltype(
 	fp<uint64_t,8>() + fp<uint8_t,8>())::base_type,
@@ -129,15 +129,15 @@ class int_test {
 	static constexpr fp<uint16_t,10> t1 = 1;
 	static constexpr fp<uint32_t,12> t2 = 2;
 	static constexpr fp<uint64_t,16> t3 = 7.25;
-	static constexpr auto t4 = 3 + t1 + t3 - t2;
-	static_assert(t4 == 9.25, "");
+	static constexpr auto t4 = fp<uint16_t>(3) + t1 + t3 - t2;
+	static_assert(t4 == fp<uint32_t,16>(9.25), "");
 	static_assert(std::is_same<decltype(t4)::base_type, uint64_t>::value, "");
 	static_assert(t4.exp == 16, "");
 
-	static constexpr auto t5 = 2.75 * fp<uint32_t,8>(10.25);
+	static constexpr auto t5 = fp<uint32_t,2>(2.75) * fp<uint32_t,8>(10.25);
 	static_assert(std::is_same<decltype(t5)::base_type, uint32_t>::value, "");
-	static_assert(t5.exp == 16, "");
-	static_assert(t5 == 2.75 * 10.25, "");
+	static_assert(t5.exp == 10, "");
+	static_assert(t5 == fp<uint32_t,10>(2.75 * 10.25), "");
 };
 
 #endif

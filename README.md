@@ -17,6 +17,16 @@ std::cout << double(z);
 //prints 2.4375
 ```
 
+Also included is a *ranged* class, implemented in the file ranged.hpp.
+It's purpose is to wrap another numeric type, and provide range checking
+on top of it, by implementing interval arithmetic in the type system.
+It will trip a compile error in case range violations occur.
+It should only be looked at as a demonstration of how the *fp* class can be
+composed with other classes. At the moment, the only types that can be
+safely wrapped are the built-in signed integers. When a range violation
+does occur, the compiler error can be very verbose and unspecific in some
+cases.
+
 It needs at least clang 3.4 to compile, with `-std=c++1y`.
 Unit tests are included, and these can be built using CMake.
 
@@ -27,7 +37,7 @@ make
 ctest
 ```
 
-Description
+Fixed Point Library Description
 ------------------
 
 It implements a template class type `fp<T,E>` where `T` is an underlying
@@ -43,14 +53,8 @@ and the whole set of arithmetic, bitwise and relational operators.
 Binary operators also support mixing between *fp* and integers / floats.
 All operations are constexpr when possible.
 
-A vshift member template function is also provided, which performs a virtual
+A scale member template function is also provided, which performs a virtual
 shift.
-
-When a binary operation is used between *fp* numbers and
-plain integers / floats, the latter is implicitly converted to the type
-of the first one.
-For example, the expression `fp<int,8>(4) + 1.25` is equivalent
-to `fp<int,8>(4) + fp<int,8>(1.25)`
 
 When mixing *fp* numbers of different base types, the following rules apply:
 
@@ -80,6 +84,39 @@ exponents, the operand with the greatest exponent is converted so it has the
 same exponent as the other one, and they are then compared.
 This avoids a more expensive operation, and means that only least
 significant bits are discarded.
+
+Ranged Library Description
+------------------
+
+It implements a template class type `ranged<T,LOW,MAX>` where `T` is an underlying
+arithmetic type, and `LOW` and `MAX` are non-type parameters of type `T` 
+which define the closed boundary of the valid range.
+
+When operations are performed on these types, the implementation will,
+at compile time, perform interval arithmetic on the ranges, and the
+type of the result will reflect the possible range of the result.
+
+If the type gets constructed with ranges which are outside the range allowable
+by the underlying type, then a compile error will occur.
+
+If a ranged variable gets assigned to / constructed from another ranged variable which does not completely
+contain that range, then a compilation error will also occur.
+
+Examples:
+
+```
+auto test1 = ranged<int32_t, -20, 50>{ 10 };
+auto test2 = ranged<int32_t, 1000, 10000>{ 2000 };
+auto test3 = ranged<int32_t, -3000, 8000>{ 100 };
+// will trip a compile error because the result can be as big as 4'000'000'000, which is above MAX_INT
+auto test4 = test1 * test2 * test3;
+```
+
+```
+auto test1 = ranged<int, -20, 50>{ 10 };
+// will trip a compile error because test1 could have a value up to 50, but test2 only accepts values up to 49
+ranged<int, -20, 49> test2 = test1;
+```
 
 License
 -------

@@ -48,7 +48,7 @@ TEST(float, 0, 0.625);
 /**********************************************************************************************************************/
 
 /******* Relational operators tests ***********************************************************************************/
-static_assert(fp<float,10>(8.3333) == 8.3333, "");
+static_assert(fp<float,10>(8.3333) == fp<float>(8.3333), "");
 static_assert(fp<float,10>(8.6666) == fp<float,8>(8.6666), "");
 static_assert(fp<float,10>(8.3333) != fp<float,7>(8.3334), "");
 static_assert(fp<float,10>(8.25) < fp<float,16>(10.25), "");
@@ -58,24 +58,24 @@ static_assert(fp<float,10>(4.750) >= fp<float,16>(4.750), "");
 
 /**************** Unary operators tests *******************************************************************************/
 static_assert(+fp<float,10>(4.750) == fp<float,16>(4.750), "");
-static_assert(-fp<float,10>(4.750) == -4.750, "");
+static_assert(-fp<float,10>(4.750) == fp<float>(-4.750), "");
 static_assert((+fp<float,10>(0)).exp == 10, "");
 static_assert(std::is_same<decltype(+fp<float,8>())::base_type, decltype(+float())>::value, "");
 /**********************************************************************************************************************/
 
 /*********************** Binary operators tests ***********************************************************************/
-static_assert(fp<float,16>(5.25) + 4.75 == 10, "");
-static_assert(7 == 1 + fp<float,16>(6), "");
-static_assert(fp<float,16>(5.25) - 4.75 == fp<float,4>(0.5), "");
-static_assert(fp<float,14>(7) - fp<float,12>(5) == 2.0, "");
-static_assert(4.75 * fp<float,8>(5.25) == 24.9375, "");
-static_assert(fp<float,16>(24.9375) / fp<float,8>(5.25) == 4.75, "");
+static_assert(fp<float,16>(5.25) + fp<float>(4.75) == fp<int>(10), "");
+static_assert(fp<int>(7) == fp<int>(1) + fp<float,16>(6), "");
+static_assert(fp<float,16>(5.25) - fp<float>(4.75) == fp<float,4>(0.5), "");
+static_assert(fp<float,14>(7) - fp<float,12>(5) == fp<float,16>(2.0), "");
+static_assert(fp<float,4>(4.75) * fp<float,8>(5.25) == fp<float>(24.9375), "");
+static_assert(fp<float,16>(24.9375) / fp<float,8>(5.25) == fp<float>(4.75), "");
 
 static_assert(fp<float,10>(8.0) == fp<float,4>(80) / fp<float,6>(10), "");
-static_assert(fp<float,16>(18.5) == fp<float,16>(185) / 10, "");
+static_assert(fp<float,16>(18.5) == fp<float,16>(185) / fp<int>(10), "");
 
-static_assert(fp<float,8>(8.25).vshift< 2>() == 33, "");
-static_assert(fp<float,8>(33  ).vshift<-2>() == 8.25, "");
+static_assert(fp<float,8>(8.25).scale< 2>() == fp<int>(33), "");
+static_assert(fp<float,8>(33  ).scale<-2>() == fp<float>(8.25), "");
 
 static_assert(std::is_same<decltype(
 	fp<float,8>() + fp<double,8>())::base_type,
@@ -89,14 +89,14 @@ class float_test {
 	static constexpr fp<float,10> t1 = 1;
 	static constexpr fp<double,12> t2 = 2;
 	static constexpr fp<double,16> t3 = 7.25;
-	static constexpr auto t4 = 3 + t1 + t3 - t2;
-	static_assert(t4 == 9.25, "");
+	static constexpr auto t4 = fp<int>(3) + t1 + t3 - t2;
+	static_assert(t4 == fp<float>(9.25), "");
 	static_assert(std::is_same<decltype(t4)::base_type, double>::value, "");
 	static_assert(t4.exp == 16, "");
-	static constexpr auto t5 = 2.75 * fp<float,8>(10.25);
+	static constexpr auto t5 = fp<float,4>(2.75) * fp<float,8>(10.25);
 	static_assert(std::is_same<decltype(t5)::base_type, float>::value, "");
-	static_assert(t5.exp == 16, "");
-	static_assert(t5 == 2.75 * 10.25, "");
+	static_assert(t5.exp == 12, "");
+	static_assert(t5 == fp<float,10>(2.75 * 10.25), "");
 };
 
 #endif

@@ -30,59 +30,48 @@
 #include <type_traits>
 #include <cmath>
 
-namespace stdx {
-#define DECL template<class T, class U>
-	DECL struct plus       { constexpr auto operator()(const T& x, const U& y) { return x + y; } };
-	DECL struct minus      { constexpr auto operator()(const T& x, const U& y) { return x - y; } };
-	DECL struct multiplies { constexpr auto operator()(const T& x, const U& y) { return x * y; } };
-	DECL struct divides    { constexpr auto operator()(const T& x, const U& y) { return x / y; } };
-	DECL struct modulus    { constexpr auto operator()(const T& x, const U& y) { return x % y; } };
-	DECL struct bit_and    { constexpr auto operator()(const T& x, const U& y) { return x & y; } };
-	DECL struct bit_or     { constexpr auto operator()(const T& x, const U& y) { return x | y; } };
-	DECL struct bit_xor    { constexpr auto operator()(const T& x, const U& y) { return x ^ y; } };
+#include "common.hpp"
 
-	DECL struct equal_to { constexpr auto operator()(const T& x, const U& y) { return x == y; } };
-	DECL struct less     { constexpr auto operator()(const T& x, const U& y) { return x <  y; } };
-#undef DECL
-};
+template<class> struct is_fp : std::false_type {};
 
-template<class T, int E = 0> struct fp {
+template<class T, int E = 0> struct fp : std::numeric_limits<fp<T,E>> {
 	using base_type = T;
 	static constexpr auto exp = E;
+
+	static_assert(std::numeric_limits<T>::is_specialized, "base_type must specialize std::numeric_limits");
 
 	// Public Constructors
 	fp() = default;
 	constexpr fp(const T &b, bool) : base(b) {}
-	template<class B>         constexpr fp(const B        &b) : base(scale<T,E     >(b     )) {}
-	template<class B, int Eb> constexpr fp(const fp<B,Eb> &b) : base(scale<T,E - Eb>(b.base)) {}
+	template<class B>         constexpr fp(const B        &b) : base(::scale<E     ,T>(b     )) {}
+	template<class B, int Eb> constexpr fp(const fp<B,Eb> &b) : base(::scale<E - Eb,T>(b.base)) {}
 	//
 
-	template<int Er> constexpr auto vshift() const { return fp<T, E - Er>(base, {}); }
+	template<int Er,class=void> constexpr auto scale() const { return fp<T, E - Er>(base, {}); }
 
 	// Operators Implementation
-	template<class U, class = std::enable_if_t< std::is_arithmetic<U>{} >>
-	constexpr operator U() const { return scale<U,-E>(base); }
+	template<class U, class = std::enable_if_t< !is_fp<U>{} >>
+	explicit constexpr operator U() const { return fp<U,0>(*this).base; }
 
 	template<class B> constexpr auto& operator =(const B &b) { return base = fp<T,E>(b).base, *this; }
 
-#define DECL template<class A, class B> friend constexpr
-	DECL auto operator+(const A &a, const B &b) { return bin_op<max,stdx::plus      >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator-(const A &a, const B &b) { return bin_op<max,stdx::minus     >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator*(const A &a, const B &b) { return bin_op<sum,stdx::multiplies>(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator/(const A &a, const B &b) { return bin_op<sub,stdx::divides   >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator%(const A &a, const B &b) { return bin_op<max,stdx::modulus   >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator&(const A &a, const B &b) { return bin_op<max,stdx::bit_and   >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator|(const A &a, const B &b) { return bin_op<max,stdx::bit_or    >(proxy<B>(a), proxy<A>(b)); }
-	DECL auto operator^(const A &a, const B &b) { return bin_op<max,stdx::bit_xor   >(proxy<B>(a), proxy<A>(b)); }
+#define DECL template<class B, class = std::enable_if_t< is_fp<B>{} > > constexpr
+	DECL auto operator+(const B &b) const { return bin_op<emax,stdx::plus      >(*this, b); }
+	DECL auto operator-(const B &b) const { return bin_op<emax,stdx::minus     >(*this, b); }
+	DECL auto operator*(const B &b) const { return bin_op<esum,stdx::multiplies>(*this, b); }
+	DECL auto operator/(const B &b) const { return bin_op<esub,stdx::divides   >(*this, b); }
+	DECL auto operator%(const B &b) const { return bin_op<emax,stdx::modulus   >(*this, b); }
+	DECL auto operator&(const B &b) const { return bin_op<emax,stdx::bit_and   >(*this, b); }
+	DECL auto operator|(const B &b) const { return bin_op<emax,stdx::bit_or    >(*this, b); }
+	DECL auto operator^(const B &b) const { return bin_op<emax,stdx::bit_xor   >(*this, b); }
 
-	DECL bool operator==(const A &a, const B &b) { return bin_op_raw<min,stdx::equal_to>(proxy<B>(a), proxy<A>(b)); }
-	DECL bool operator <(const A &a, const B &b) { return bin_op_raw<min,stdx::less    >(proxy<B>(a), proxy<A>(b)); }
+	DECL bool operator==(const B &b) const { return bin_op_raw<emin,stdx::equal_to>(*this, b); }
+	DECL bool operator <(const B &b) const { return bin_op_raw<emin,stdx::less    >(*this, b); }
 
-	DECL bool operator<=(const A &a, const B &b) { return a == b || a <  b; }
-	DECL bool operator!=(const A &a, const B &b) { return !(a == b); }
-	DECL bool operator >(const A &a, const B &b) { return !(a <= b); }
-	DECL bool operator>=(const A &a, const B &b) { return !(a <  b); }
-#undef DECL
+	DECL bool operator<=(const B &b) const { return *this == b || *this <  b; }
+	DECL bool operator!=(const B &b) const { return !(*this == b); }
+	DECL bool operator >(const B &b) const { return !(*this <= b); }
+	DECL bool operator>=(const B &b) const { return !(*this <  b); }
 
 	template<class B> constexpr auto operator<<(const B &b) const { return make_fp_raw<E>(base << b); }
 	template<class B> constexpr auto operator>>(const B &b) const { return make_fp_raw<E>(base >> b); }
@@ -93,56 +82,30 @@ template<class T, int E = 0> struct fp {
 	//
 
 	// These implement the remaining operators based on the previous ones
-	template<class B> constexpr auto& operator+=(const B &b) { return *this = *this + b; }
-	template<class B> constexpr auto& operator-=(const B &b) { return *this = *this - b; }
-	template<class B> constexpr auto& operator*=(const B &b) { return *this = *this * b; }
-	template<class B> constexpr auto& operator/=(const B &b) { return *this = *this / b; }
-	template<class B> constexpr auto& operator%=(const B &b) { return *this = *this % b; }
+	DECL auto& operator+=(const B &b) { return *this = *this + b; }
+	DECL auto& operator-=(const B &b) { return *this = *this - b; }
+	DECL auto& operator*=(const B &b) { return *this = *this * b; }
+	DECL auto& operator/=(const B &b) { return *this = *this / b; }
+	DECL auto& operator%=(const B &b) { return *this = *this % b; }
 
 	template<class B> constexpr auto& operator<<=(const B &b) { return *this = *this << b; }
 	template<class B> constexpr auto& operator>>=(const B &b) { return *this = *this >> b; }
+#undef DECL
 
-	constexpr auto& operator++()    { return *this += 1; }
-	constexpr auto& operator--()    { return *this -= 1; }
-	constexpr auto  operator++(int) { auto ret = *this; return *this += 1, ret; }
-	constexpr auto  operator--(int) { auto ret = *this; return *this -= 1, ret; }
+	constexpr auto& operator++()    { return *this += fp<T,0>(1); }
+	constexpr auto& operator--()    { return *this -= fp<T,0>(1); }
+	constexpr auto  operator++(int) { auto ret = *this; return ++*this, ret; }
+	constexpr auto  operator--(int) { auto ret = *this; return ++*this, ret; }
 	//
 private:
-	template<class A, int Ea> friend struct fp;
+	template<class, int> friend struct fp;
+	friend std::numeric_limits<fp>;
 
 	// Exponent Operations
-	template<int Ea, int Eb> struct max { enum { e = Ea > Eb ? Ea : Eb, ea = e , eb = e  }; };
-	template<int Ea, int Eb> struct min { enum { e = Ea < Eb ? Ea : Eb, ea = e , eb = e  }; };
-	template<int Ea, int Eb> struct sum { enum { e = Ea + Eb          , ea = Ea, eb = Eb }; };
-	template<int Ea, int Eb> struct sub { enum { e = Ea - Eb          , ea = Ea, eb = Eb }; };
-	//
-
-	// proxy overloads
-	template<class B, class A> static constexpr fp<typename B::base_type,B::exp> proxy(const A &a) { return a; }
-	template<class B, class A, int Ea> static constexpr const auto& proxy(const fp<A,Ea> &a) { return a; }
-	//
-
-	// exp2 metafunction
-	template<int I, typename Ta> struct exp2 {
-		static constexpr Ta value = Ta(I > 0 ? 2.0 : 0.5) * exp2<I + (I > 0 ? -1 : 1), Ta>::value;
-	};
-	template<typename Ta> struct exp2<0, Ta> { static constexpr Ta value = 1.0; };
-	//
-
-	// Scaling overload set
-	template<class U, int Er, class Ta, class Tb = decltype(Ta() + U())>
-	static constexpr std::enable_if_t<std::is_integral<U>{}, U>
-	scale(const Ta &a, std::enable_if_t<std::is_integral<Ta>{}>* = 0)
-	{ return Er > 0 ? Tb(a) << Er : Tb(a) >> -Er; }
-
-	template<class U, int Er, class Ta, class Tb = decltype(Ta() + U())>
-	static constexpr std::enable_if_t<std::is_floating_point<U>{}, U>
-	scale(const Ta &a) { return Tb(a) * exp2<Er,Tb>::value; }
-
-	// Optional rounding should be performed here, but unfortunately std::lround is not mandated to be constexpr.
-	template<class U, int Er, class Ta> static constexpr std::enable_if_t<std::is_integral<U>{}, U>
-	scale(const Ta &a, std::enable_if_t<std::is_floating_point<Ta>{}>* = 0)
-	{ return /*std::llround*/(scale<Ta,Er>(a)); }
+	template<int Ea, int Eb> struct emax { enum { e = stdx::max(Ea,Eb), ea = e , eb = e  }; };
+	template<int Ea, int Eb> struct emin { enum { e = stdx::min(Ea,Eb), ea = e , eb = e  }; };
+	template<int Ea, int Eb> struct esum { enum { e = Ea + Eb         , ea = Ea, eb = Eb }; };
+	template<int Ea, int Eb> struct esub { enum { e = Ea - Eb         , ea = Ea, eb = Eb }; };
 	//
 
 	template<int Ea, class A> static constexpr fp<A,Ea> make_fp_raw(const A &a) { return { a, {} }; }
@@ -151,9 +114,9 @@ private:
 	// Generic Binary Operator Implementation
 	template<template<int,int> class EOP, template<class,class> class BOP, class A, int Ea, class B, int Eb>
 	static constexpr auto bin_op_raw(const fp<A,Ea> &a, const fp<B,Eb> &b) {
-		fp<promote<A>, EOP<Ea, Eb>::ea> sa = a;
-		fp<promote<B>, EOP<Ea, Eb>::eb> sb = b;
-		return BOP<decltype(sa.base),decltype(sb.base)>()(sa.base, sb.base);
+		auto sa = ::scale<EOP<Ea,Eb>::ea - Ea, promote<A>>(a.base);
+		auto sb = ::scale<EOP<Ea,Eb>::eb - Eb, promote<A>>(b.base);
+		return BOP<decltype(sa),decltype(sb)>()(sa, sb);
 	}
 	template<template<int,int> class EOP, template<class,class> class BOP, class A, int Ea, class B, int Eb>
 	static constexpr auto bin_op(const fp<A,Ea> &a, const fp<B,Eb> &b) {
@@ -163,5 +126,56 @@ private:
 
 	base_type base;
 };
+
+namespace std {
+template<class T, int E> struct numeric_limits<fp<T,E>> {
+	using type = fp<T,E>;
+	using base = numeric_limits<T>;
+
+	static constexpr bool is_specialized = base::is_specialized;
+
+	static constexpr type min()    noexcept { return { base::min()   , {} }; }
+	static constexpr type max()    noexcept { return { base::max()   , {} }; }
+	static constexpr type lowest() noexcept { return { base::lowest(), {} }; }
+
+	static constexpr int  digits       = base::digits;
+	static constexpr int  digits10     = base::digits10;
+	static constexpr int  max_digits10 = base::max_digits10;
+	static constexpr bool is_signed    = base::is_signed;
+	static constexpr bool is_integer   = base::is_integer;
+	static constexpr bool is_exact     = base::is_exact;
+	static constexpr int  radix        = base::radix;
+
+	static constexpr type epsilon()     noexcept { return { base::epsilon()    , {} }; }
+	static constexpr type round_error() noexcept { return { base::round_error(), {} }; }
+
+	static constexpr int  min_exponent   = base::min_exponent;
+	static constexpr int  min_exponent10 = base::min_exponent10;
+	static constexpr int  max_exponent   = base::max_exponent;
+	static constexpr int  max_exponent10 = base::max_exponent10;
+
+	static constexpr bool has_infinity      = base::has_infinity;
+	static constexpr bool has_quiet_NaN     = base::has_quiet_NaN;
+	static constexpr bool has_signaling_NaN = base::has_signaling_NaN;
+	static constexpr float_denorm_style has_denorm = base::has_denorm;
+	static constexpr bool has_denorm_loss = base::has_denorm_loss;
+
+	static constexpr type infinity()      noexcept { return { base::infinity()     , {} }; }
+	static constexpr type quiet_NaN()     noexcept { return { base::quiet_NaN()    , {} }; }
+	static constexpr type signaling_NaN() noexcept { return { base::signaling_NaN(), {} }; }
+	static constexpr type denorm_min()    noexcept { return { base::denorm_min()   , {} }; }
+
+	static constexpr bool is_iec559  = base::is_iec559;
+	static constexpr bool is_bounded = base::is_bounded;
+	static constexpr bool is_modulo  = base::is_modulo;
+
+	static constexpr bool traps = base::traps;
+	static constexpr bool tinyness_before = base::tinyness_before;
+	static constexpr float_round_style round_style = base::round_style;
+};
+}
+
+template<class T, int E> struct is_fp<fp<T, E>> : std::true_type {};
+template<class T, int E> struct underlying<fp<T,E>> { using type = underlying_t<T>; };
 
 #endif
