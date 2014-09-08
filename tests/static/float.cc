@@ -23,20 +23,20 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef MIZVEKOV_FP_STATIC_TESTS_FLOAT_INCLUDE_HPP_INCLUDED
-#define MIZVEKOV_FP_STATIC_TESTS_FLOAT_INCLUDE_HPP_INCLUDED
-
 #include <cstdint>
 #include <limits>
-#include "fp.hpp"
+#include <cmath>
+#include <fp/fp.hpp>
+
+using namespace fp;
+using namespace fp::constants;
 
 /********** fp instances must be standard layout iff base_type is standard layout *************************************/
-static_assert(std::is_standard_layout<fp<float,0>>::value, "fp<float> must be standard layout");
+static_assert(std::is_standard_layout<fp_t<float,0>>::value, "fp_t<float> must be standard layout");
 /**********************************************************************************************************************/
 
 /********************** Construction and cast tests *******************************************************************/
-#define TEST(T,E,V) static_assert((decltype(V))(fp<T,E>(V)) == V, "")
+#define TEST(T,E,V) static_assert((decltype(V))(fp_t<T,E>(V)) == V, "")
 
 TEST(float, 16, float(M_PI));
 
@@ -48,55 +48,53 @@ TEST(float, 0, 0.625);
 /**********************************************************************************************************************/
 
 /******* Relational operators tests ***********************************************************************************/
-static_assert(fp<float,10>(8.3333) == fp<float>(8.3333), "");
-static_assert(fp<float,10>(8.6666) == fp<float,8>(8.6666), "");
-static_assert(fp<float,10>(8.3333) != fp<float,7>(8.3334), "");
-static_assert(fp<float,10>(8.25) < fp<float,16>(10.25), "");
-static_assert(fp<float,10>(4.375) <= fp<float,16>(4.375), "");
-static_assert(fp<float,10>(4.750) >= fp<float,16>(4.750), "");
+static_assert(make_fp<10>(8.3333) == make_fp(8.3333), "");
+static_assert(make_fp<10>(8.6666) == make_fp<8>(8.6666), "");
+static_assert(make_fp<10>(8.3333) != make_fp<7>(8.3334), "");
+static_assert(make_fp<10>(8.25) < make_fp<16>(10.25), "");
+static_assert(make_fp<10>(4.375) <= make_fp<16>(4.375), "");
+static_assert(make_fp<10>(4.750) >= make_fp<16>(4.750), "");
 /**********************************************************************************************************************/
 
 /**************** Unary operators tests *******************************************************************************/
-static_assert(+fp<float,10>(4.750) == fp<float,16>(4.750), "");
-static_assert(-fp<float,10>(4.750) == fp<float>(-4.750), "");
-static_assert((+fp<float,10>(0)).exp == 10, "");
-static_assert(std::is_same<decltype(+fp<float,8>())::base_type, decltype(+float())>::value, "");
+static_assert(+make_fp<10>(4.750) == make_fp<16>(4.750), "");
+static_assert(-make_fp<10>(4.750) == make_fp(-4.750), "");
+static_assert(decltype(+make_fp<10>(0))::exp{} == 10, "");
+static_assert(std::is_same<decltype(+fp_t<float,8>())::base_type, decltype(+float())>::value, "");
 /**********************************************************************************************************************/
 
 /*********************** Binary operators tests ***********************************************************************/
-static_assert(fp<float,16>(5.25) + fp<float>(4.75) == fp<int>(10), "");
-static_assert(fp<int>(7) == fp<int>(1) + fp<float,16>(6), "");
-static_assert(fp<float,16>(5.25) - fp<float>(4.75) == fp<float,4>(0.5), "");
-static_assert(fp<float,14>(7) - fp<float,12>(5) == fp<float,16>(2.0), "");
-static_assert(fp<float,4>(4.75) * fp<float,8>(5.25) == fp<float>(24.9375), "");
-static_assert(fp<float,16>(24.9375) / fp<float,8>(5.25) == fp<float>(4.75), "");
+static_assert(make_fp<16>(5.25) + make_fp(4.75) == make_fp(10), "");
+static_assert(make_fp(7) == make_fp(1) + make_fp<16>(6), "");
+static_assert(make_fp<16>(5.25) - make_fp(4.75) == make_fp<4>(0.5), "");
+static_assert(make_fp<14>(7) - make_fp<12>(5) == make_fp<16>(2.0), "");
+static_assert(make_fp<4>(4.75) * make_fp<8>(5.25) == make_fp(24.9375), "");
+static_assert(make_fp<16>(24.9375) / make_fp<8>(5.25) == make_fp(4.75), "");
 
-static_assert(fp<float,10>(8.0) == fp<float,4>(80) / fp<float,6>(10), "");
-static_assert(fp<float,16>(18.5) == fp<float,16>(185) / fp<int>(10), "");
+static_assert(make_fp<10>(8.0) == make_fp<4>(80) / make_fp<6>(10), "");
+static_assert(make_fp<16>(18.5) == make_fp<16>(185.0) / make_fp(10), "");
 
-static_assert(fp<float,8>(8.25).scale< 2>() == fp<int>(33), "");
-static_assert(fp<float,8>(33  ).scale<-2>() == fp<float>(8.25), "");
+static_assert( (make_fp<8>(8.25) << int_<2>) == fp_t<int>(33), "");
+static_assert( (make_fp<8>(33.0) >> int_<2>) == fp_t<float>(8.25), "");
 
 static_assert(std::is_same<decltype(
-	fp<float,8>() + fp<double,8>())::base_type,
+	fp_t<float,8>() + fp_t<double,8>())::base_type,
 	decltype(float()+double())
 	>::value, "");
 
-static_assert(std::is_same<decltype(fp<double,8>() * fp<float,8>())::base_type, double>::value, "");
+static_assert(std::is_same<decltype(fp_t<double,8>() * fp_t<float,8>())::base_type, double>::value, "");
 /**********************************************************************************************************************/
 
 class float_test {
-	static constexpr fp<float,10> t1 = 1;
-	static constexpr fp<double,12> t2 = 2;
-	static constexpr fp<double,16> t3 = 7.25;
-	static constexpr auto t4 = fp<int>(3) + t1 + t3 - t2;
-	static_assert(t4 == fp<float>(9.25), "");
+	static constexpr fp_t<float,10> t1 = 1;
+	static constexpr fp_t<double,12> t2 = 2;
+	static constexpr auto t3 = make_fp<16>(7.25);
+	static constexpr auto t4 = make_fp(3) + t1 + t3 - t2;
+	static_assert(t4 == make_fp(9.25), "");
 	static_assert(std::is_same<decltype(t4)::base_type, double>::value, "");
-	static_assert(t4.exp == 16, "");
-	static constexpr auto t5 = fp<float,4>(2.75) * fp<float,8>(10.25);
-	static_assert(std::is_same<decltype(t5)::base_type, float>::value, "");
-	static_assert(t5.exp == 12, "");
-	static_assert(t5 == fp<float,10>(2.75 * 10.25), "");
+	static_assert(decltype(t4)::exp{} == 16, "");
+	static constexpr auto t5 = make_fp<4>(2.75) * make_fp<8>(10.25);
+	static_assert(std::is_same<decltype(t5)::base_type, double>::value, "");
+	static_assert(decltype(t5)::exp{} == 12, "");
+	static_assert(t5 == make_fp<10>(2.75 * 10.25), "");
 };
-
-#endif

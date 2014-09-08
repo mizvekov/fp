@@ -23,22 +23,43 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <catch.hpp>
+#include <fp/fp.hpp>
 
-#ifndef MIZVEKOV_RANGED_TRIP_EXAMPLE2_INCLUDE_HPP_INCLUDED
-#define MIZVEKOV_RANGED_TRIP_EXAMPLE2_INCLUDE_HPP_INCLUDED
+#include <fp/adapters/rational.hpp>
 
-#include "ranged.hpp"
-#include <cstdint>
+TEST_CASE( "rational tests", "[rational]" ) {
+	using namespace fp;
+	using namespace fp::constants;
+	using boost::rational;
 
-struct ranged_trip_example1 {
-	static constexpr auto test1 = ranged<int, -20, 50>{ 10 };
-
-	// will trip a compile error because test1 could
-	// have a value up to 50, but test2 only accepts
-	// values up to 49
-	static constexpr ranged<int, -20, 49> test2 = test1;
-
-	static_assert(test2 == ranged<int>{ 10 }, "");
-};
-
-#endif
+	SECTION( "construction and cast" ) {
+		auto x = rational<int>(1,2) << 2;
+		REQUIRE( boost::rational_cast<double>(x) == 2 );
+	}
+	SECTION( "addition" ) {
+		auto x = make_fp<2>(rational<int>(1,2));
+		auto y = make_fp<1>(rational<int>(2));
+		REQUIRE( boost::rational_cast<double>(rational<int>(x + y)) == 2.5 );
+	}
+	SECTION( "subtraction" ) {
+		auto x = make_fp<1>(rational<int>(6));
+		auto y = make_fp<2>(rational<int>(9,2));
+		REQUIRE( boost::rational_cast<double>(rational<int>(x - y)) == 1.5 );
+	}
+	SECTION( "multiplication" ) {
+		auto x = make_fp<1>(rational<int>(12,5));
+		auto y = make_fp<2>(rational<int>(15,6));
+		REQUIRE( boost::rational_cast<double>(rational<int>(x * y)) == (12. * 15.) / (5. * 6.) );
+	}
+	SECTION( "division" ) {
+		auto x = make_fp<5>(rational<int>(34,7));
+		auto y = make_fp<8>(rational<int>(21,8));
+		REQUIRE( boost::rational_cast<double>(rational<int>(x / y)) == (34. * 8.) / (21. * 7.) );
+	}
+	SECTION( "multiplication with virtual shift" ) {
+		auto x = make_fp<1>(rational<int>(33,3)) << int_<2>;
+		auto y = make_fp<8>(rational<int>(60,16)) >> int_<4>;
+		REQUIRE( boost::rational_cast<double>(rational<int>(x * y)) == ((33. / 3.) * 4.) * ((60. / 16.) / 16.) );
+	}
+}

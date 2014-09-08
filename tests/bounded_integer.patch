@@ -1,0 +1,65 @@
+diff -r ae86fec642ef bounded_integer/detail/make.hpp
+--- a/bounded_integer/detail/make.hpp	Sun Aug 24 18:13:55 2014 -0600
++++ b/bounded_integer/detail/make.hpp	Mon Sep 08 09:13:03 2014 -0300
+@@ -85,7 +85,7 @@
+ 	>,
+ 	storage
+ > {
+-	static_assert(std::numeric_limits<T>::is_integer, "Must be an integer type.");
++	static_assert(detail::basic_numeric_limits<T>::is_integer, "Must be an integer type.");
+ 	return {value, non_check};
+ }
+ 
+diff -r ae86fec642ef bounded_integer/detail/numeric_limits.hpp
+--- a/bounded_integer/detail/numeric_limits.hpp	Sun Aug 24 18:13:55 2014 -0600
++++ b/bounded_integer/detail/numeric_limits.hpp	Mon Sep 08 09:13:03 2014 -0300
+@@ -37,6 +37,7 @@
+ 		return std::numeric_limits<T>::max();
+ 	}
+ 	static constexpr bool is_specialized = std::numeric_limits<T>::is_specialized;
++	static constexpr bool is_integer = std::numeric_limits<T>::is_integer;
+ };
+ template<intmax_t minimum, intmax_t maximum, typename overflow_policy, storage_type storage>
+ class basic_numeric_limits_impl<integer<minimum, maximum, overflow_policy, storage>> {
+@@ -48,7 +49,21 @@
+ 		return maximum;
+ 	}
+ 	static constexpr bool is_specialized = true;
++	static constexpr bool is_integer = true;
+ };
++template<typename T, T V>
++class basic_numeric_limits_impl<std::integral_constant<T,V>> {
++public:
++	static constexpr auto min() noexcept -> intmax_t {
++		return V;
++	}
++	static constexpr auto max() noexcept -> intmax_t {
++		return V;
++	}
++	static constexpr bool is_specialized = std::numeric_limits<T>::is_specialized;
++	static constexpr bool is_integer = std::numeric_limits<T>::is_integer;
++};
++
+ 
+ template<typename T>
+ using basic_numeric_limits = basic_numeric_limits_impl<std::decay_t<T>>;
+diff -r ae86fec642ef bounded_integer/detail/operators/arithmetic.hpp
+--- a/bounded_integer/detail/operators/arithmetic.hpp	Sun Aug 24 18:13:55 2014 -0600
++++ b/bounded_integer/detail/operators/arithmetic.hpp	Mon Sep 08 09:13:03 2014 -0300
+@@ -51,14 +51,14 @@
+ /* Interoperability with built-ins */ \
+ template< \
+ 	intmax_t lhs_min, intmax_t lhs_max, typename overflow, storage_type storage, typename T, \
+-	enable_if_t<std::is_integral<T>::value> = clang_dummy \
++	enable_if_t<detail::basic_numeric_limits<T>::is_specialized && detail::basic_numeric_limits<T>::is_integer> = clang_dummy \
+ > \
+ constexpr auto operator symbol(integer<lhs_min, lhs_max, overflow, storage> const lhs, T const rhs) noexcept { \
+ 	return lhs symbol make(rhs); \
+ } \
+ template< \
+ 	typename T, intmax_t rhs_min, intmax_t rhs_max, typename overflow, storage_type storage, \
+-	enable_if_t<std::is_integral<T>::value> = clang_dummy \
++	enable_if_t<detail::basic_numeric_limits<T>::is_specialized && detail::basic_numeric_limits<T>::is_integer> = clang_dummy \
+ > \
+ constexpr auto operator symbol(T const lhs, integer<rhs_min, rhs_max, overflow, storage> const rhs) noexcept { \
+ 	return make(lhs) symbol rhs; \

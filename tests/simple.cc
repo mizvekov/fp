@@ -23,41 +23,48 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <catch.hpp>
+#include <fp/fp.hpp>
 
-#ifndef MIZVEKOV_TOTEM_STATIC_TESTS_INCLUDE_HPP_INCLUDED
-#define MIZVEKOV_TOTEM_STATIC_TESTS_INCLUDE_HPP_INCLUDED
+TEST_CASE( "fp tests", "[fp]" ) {
+	using namespace fp;
+	using namespace fp::constants;
 
-#include "fp.hpp"
-#include "ranged.hpp"
-#include <cstdint>
+	SECTION( "simple operations part 1" ) {
+		fp_t<uint16_t,8> a = 1.25;
 
-struct totem_test {
-	static constexpr auto test1 = fp<fp<fp<ranged<int,-4096  ,4096  >,1>,2>,3>{ 2 };
-	static constexpr auto test2 = fp<fp<fp<ranged<int,-131072,131072>,2>,3>,4>{ 3 };
-	static constexpr auto test3 = test1 * test2;
+		REQUIRE( double(a) == 1.250 );
 
-	static_assert(int(test1) == 2, "");
-	static_assert(int(test2) == 3, "");
-	static_assert(int(test3) == 6, "");
+		a += fp_t<uint16_t,8>(0.25);
+		REQUIRE( double(a) == 1.500 );
 
-	static_assert(int(test1.lowest()) == -64, "");
-	static_assert(int(test1.max()) == 64, "");
-	static_assert(int(test2.lowest()) == -256, "");
-	static_assert(int(test2.max()) == 256, "");
-	static_assert(int(test3.lowest()) == -16384, "");
-	static_assert(int(test3.max()) == 16384, "");
+		a += fp_t<uint16_t,4>(0.125);
+		REQUIRE( double(a) == 1.625 );
 
-	static_assert(test3.exp == 7, "");
-	static_assert(decltype(test3)::base_type::exp == 5, "");
-	static_assert(decltype(test3)::base_type::base_type::exp == 3, "");
+		--a;
+		REQUIRE( double(a) == 0.625 );
+	}
 
-	static constexpr auto test4 = fp<fp<fp<int,1>,2>,3>{ 7.640625 };
-	static constexpr auto test5 = fp<fp<fp<int,3>,2>,1>{ 3.203125 };
-	static constexpr auto test6 = test4 + test5;
-	static constexpr auto test7 = test4 * test5;
+	SECTION( "simple operations part 2" ) {
+		fp_t<int16_t,8> b;
+		b = 0.75;
+		REQUIRE( double(b) == 0.750 );
 
-	static_assert(double(test6) == 10.84375, "");
-	static_assert(double(test7) == 24.473876953125, "");
-};
+		b -= fp_t<int16_t,8>(1.25);
+		REQUIRE( double(b) == -0.500 );
 
-#endif
+		b++;
+		REQUIRE( double(b) == 0.500 );
+	}
+
+	SECTION( "multiplication" ) {
+		fp_t<uint16_t,8> a = 0.625;
+		fp_t<uint16_t,8> b = 0.500;
+		auto c = a * b;
+		REQUIRE( double(c) == 0.3125 );
+	}
+
+	SECTION( "precision" ) {
+		REQUIRE( fabs(double(M_PI) - double(fp_t<uint64_t,32>(M_PI))) <= 2e-10 );
+	}
+}

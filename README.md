@@ -6,26 +6,46 @@ This is a C++14 header-only fixed-point arithmetic library.
 It's purpose is to wrap another type and provide fixed point arithmetic
 support on top of it.
 
+It's designed to be able to wrap on top of all the built-in arithmetic types
+(integers and floating point types) as well as user defined arithmetic types.
+
+Examples of other arithmetic types which are tested and
+preliminary adapters are provided:
+* boost `rational`
+* boost multiprecision `cpp_int` and `cpp_bin_float`
+* David Stone's `bounded_integer`
+
 The following is a sample of what can be achieved by employing this library:
 ```c++
-fp<int,4> x = 3.25;
-fp<char,8> y = 0.75;
+using namespace fp;
 
-auto z = x * y;
-//now z is of type fp<int,12>
-std::cout << double(z);
-//prints 2.4375
+auto x = make_fp<4, int >(3.25);
+auto y = make_fp<8, char>(0.75);
+auto z = x * y;                  // now z is of type fp_t<int,12>
+std::cout << double(z);          // prints 2.4375
+
+// using David Stone's bounded_integer
+using namespace bounded::literal;
+using namespace fp::constants; // import int_ shorthand for std::integral_constant
+
+// create a bounded fixed point integer with range [1, 100]
+// with initial value 30, then perform a virtual right shift
+// by 3.
+auto x = fp_t<bounded::integer<1, 100>, 0>{  30_bi } >> int_<3>;
+// now x holds 3.75 and has range [0.125, 12.5]
+
+//ditto, range [2, 300], initial value 150, virtual right shift by 4
+auto y = fp_t<bounded::integer<2, 300>, 0>{ 150_bi } >> int_<4>;
+// now y holds 9.375 and has range [0.125, 18.75]
+
+auto z = x + y;
+
+std::cout << double(z); // prints 13.125
+// below it shows that type information of the underlying type is not lost
+std::cout << double(std::numeric_limits<decltype(z)>::min()); // prints 0.25
+std::cout << double(std::numeric_limits<decltype(z)>::max()); // prints 31.25
+
 ```
-
-Also included is a *ranged* class, implemented in the file ranged.hpp.
-It's purpose is to wrap another numeric type, and provide range checking
-on top of it, by implementing interval arithmetic in the type system.
-It will trip a compile error in case range violations occur.
-It should only be looked at as a demonstration of how the *fp* class can be
-composed with other classes. At the moment, the only types that can be
-safely wrapped are the built-in signed integers. When a range violation
-does occur, the compiler error can be very verbose and unspecific in some
-cases.
 
 It needs at least clang 3.4 to compile, with `-std=c++1y`.
 Unit tests are included, and these can be built using CMake.
@@ -37,86 +57,77 @@ make
 ctest
 ```
 
+### How to use
+
+This is a single-header include only library, building is only required for tests.
+Just `#include <fp/fp.hpp>` and everything is inside namespace `fp`. The main
+type is `fp::fp_t` and there is also a `fp::make_fp` helper which does construction
+with type deduction. The namespace `fp::constants` contains shorthands `int_` and
+`uint_` which can be used for virtual shifting.
+
 Fixed Point Library Description
 ------------------
 
-It implements a template class type `fp<T,E>` where `T` is an underlying
+It implements a template class type `fp_t<T, E>` where `T` is an underlying
 arithmetic type and `E` is an integer representing the binary point position.
-From now on these will be referred as the base type and the exponent,
+From now on these will be referred as the underlying type and the exponent,
 for `T` and `E` respectively.
-
-The base type currently is limited to only fundamental integers and floats,
-although in the future it is hoped to support user-defined types.
 
 It supports casting between integral and floating point types
 and the whole set of arithmetic, bitwise and relational operators.
-Binary operators also support mixing between *fp* and integers / floats.
-All operations are constexpr when possible.
+All operations are constexpr themselves, although they are only usable as
+such if the underlying type also implements them as constexpr.
 
-A scale member template function is also provided, which performs a virtual
-shift.
+A virtual shift may be performed by using a `std::integral_constant` as a
+shift amount with the usual shift operators `<<` and `>>`. Convenience aliases
+`int_` and `uint_` are provided under namespace `fp::constants`
 
-When mixing *fp* numbers of different base types, the following rules apply:
+All operations preserve the resulting type of the underlying type's operation.
 
-* In the case of binary operations, normal arithmetic conversion rules
-apply between the base types of both operands. For example, the expression
-`fp<char,0>(10) + fp<char,0>(20)` has type `fp<int,0>`
+For example, if you have an instance `a` with type `fp_t<A, EXP_A>`, and an instance
+b with type `fp_t<B, EXP_B>`, and you multiply them together, the type of the expression
+`a * b` will be `fp_t<decltype(A{} * B{}), EXP_A + EXP_B>`. In the specific case that
+`A` is `char`, `B` is `int` and `EXP_A` and `EXP_B` are `2` and `3`, the resulting
+type will be `fp_t<int, 5>`, since `char{} * int{}` has type `int`, according to normal
+C++ conversion rules.
 
-* In case of unary operators, the normal promotion rules apply to the
-base type. For example, the expression `+fp<char,0>` has type `fp<int,0>`
+Similar thing happens with unary operations, the expression `+fp_t<A, EXP_A>{}`
+has type `fp_t<decltype(+A{}), EXP_A>`.
 
-In case of binary operations, the exponent of the result depends on the
-operation being performed.
+The result of a virtual shift has underlying type unchanged, and just the
+exponent is modified. The expression `fp_t<A, EXP_A>{} >> int_<SA>` has
+type `fp_t<A, EXP_A + SA>`.
+
+All the unary operations preserve the exponent, and in the case of
+binary operations, the exponent of the result depends on the operation
+being performed.
 
 For addition, subtraction, modulus and the bitwise operators, the result has
 exponent equal to the greatest of the exponents of the operands, and the
 operation is carried out as if the operand with the smallest exponent was
 cast to that same exponent. For example, the result of the expression 
-`fp<int,4>(1) + fp<int,8>(2)` has type `fp<int,8>`
+`fp_t<int, 4>(1) + fp_t<int, 8>(2)` has type `fp_t<int, 8>`
 
 For multiplication and division, the exponent of the result is equal to the
 sum and subtraction of the exponents of the operands respectively.
-This implies the expression `fp<int,4>(1) * fp<int,8>(2)` has type
-`fp<int,12>`, and with division instead, the result would be `fp<int,-4>`
+This implies the expression `fp_t<int, 4>{} * fp_t<int, 8>{}` has type
+`fp_t<int, 12>`, and with division instead, the resulting type would be
+`fp_t<int, -4>`
 
-When using the relational operators between *fp* numbers with different
+When using the relational operators between *fp_t* numbers with different
 exponents, the operand with the greatest exponent is converted so it has the
 same exponent as the other one, and they are then compared.
 This avoids a more expensive operation, and means that only least
 significant bits are discarded.
 
-Ranged Library Description
-------------------
+#### Requirements on the underlying type
 
-It implements a template class type `ranged<T,LOW,MAX>` where `T` is an underlying
-arithmetic type, and `LOW` and `MAX` are non-type parameters of type `T` 
-which define the closed boundary of the valid range.
-
-When operations are performed on these types, the implementation will,
-at compile time, perform interval arithmetic on the ranges, and the
-type of the result will reflect the possible range of the result.
-
-If the type gets constructed with ranges which are outside the range allowable
-by the underlying type, then a compile error will occur.
-
-If a ranged variable gets assigned to / constructed from another ranged variable which does not completely
-contain that range, then a compilation error will also occur.
-
-Examples:
-
-```
-auto test1 = ranged<int32_t, -20, 50>{ 10 };
-auto test2 = ranged<int32_t, 1000, 10000>{ 2000 };
-auto test3 = ranged<int32_t, -3000, 8000>{ 100 };
-// will trip a compile error because the result can be as big as 4'000'000'000, which is above MAX_INT
-auto test4 = test1 * test2 * test3;
-```
-
-```
-auto test1 = ranged<int, -20, 50>{ 10 };
-// will trip a compile error because test1 could have a value up to 50, but test2 only accepts values up to 49
-ranged<int, -20, 49> test2 = test1;
-```
+At a minimum, the underlying type must be default constructible,
+copy constructible and support left and right shift by a
+`std::integral_constant`. The other operators are optional, and if
+they are not supported, the composed type will not support them.
+For example, if there is no modulus operator implemented for `T`,
+then `fp_t<T>` will not support modulus either.
 
 License
 -------

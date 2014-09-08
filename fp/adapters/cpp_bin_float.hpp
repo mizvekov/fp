@@ -23,22 +23,27 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
 
-#ifndef MIZVEKOV_RANGED_TRIP_EXAMPLE1_INCLUDE_HPP_INCLUDED
-#define MIZVEKOV_RANGED_TRIP_EXAMPLE1_INCLUDE_HPP_INCLUDED
+#include <boost/multiprecision/cpp_bin_float.hpp>
 
-#include "ranged.hpp"
-#include <cstdint>
+namespace boost { namespace multiprecision {
+	template<unsigned Digits, backends::digit_base_type base, class Allocator, class Exp, Exp Min, Exp Max, class T, T V>
+	static auto operator<<(const number<cpp_bin_float<Digits,base,Allocator,Exp,Min,Max>> &a,
+	                       const ::std::integral_constant<T,V> &) {
+		return ldexp(a, +V);
+	}
 
-struct ranged_trip_example1 {
-	static constexpr auto test1 = ranged<int32_t, -20, 50>{ 10 };
-	static constexpr auto test2 = ranged<int32_t, 1000, 10000>{ 2000 };
-	static constexpr auto test3 = ranged<int32_t, -3000, 8000>{ 100 };
+	template<unsigned Digits, backends::digit_base_type base, class Allocator, class Exp, Exp Min, Exp Max, class T, T V>
+	static auto operator>>(const number<cpp_bin_float<Digits,base,Allocator,Exp,Min,Max>> &a,
+	                       const ::std::integral_constant<T,V> &) {
+		return ldexp(a, -V);
+	}
 
-	// will trip a compile error because the result can be
-	// as big as 4'000'000'000, which is above MAX_INT
-	static constexpr auto test4 = test1 * test2 * test3;
-	static_assert(test4 == ranged<int>{ 2000000 }, "");
-};
-
-#endif
+	template<unsigned ADigits, backends::digit_base_type Abase, class AAllocator, class AExp, AExp AMin, AExp AMax,
+	         unsigned BDigits, backends::digit_base_type Bbase, class BAllocator, class BExp, BExp BMin, BExp BMax>
+	static auto operator%(const number<cpp_bin_float<ADigits,Abase,AAllocator,AExp,AMin,AMax>> &a,
+	                      const number<cpp_bin_float<BDigits,Bbase,BAllocator,BExp,BMin,BMax>> &b) {
+		return fmod(a, b);
+	}
+}; };

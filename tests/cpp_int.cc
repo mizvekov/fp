@@ -23,41 +23,49 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+#include <catch.hpp>
+#include <fp/fp.hpp>
 
-#include "fp.hpp"
-#include "static_tests_int.hpp"
-#include "static_tests_float.hpp"
-#include "static_tests_ranged.hpp"
-#include "static_tests_ranged_fp.hpp"
-#include "static_tests_totem.hpp"
+#include <fp/adapters/cpp_int.hpp>
 
-TEST_CASE( "fp tests", "[fp]" ) {
-	fp<uint16_t,8> a = 1.25;
-	REQUIRE( double(a) == 1.250 );
+TEST_CASE( "boost multiprecision cpp_int", "[cpp_int]" ) {
+	using namespace fp;
+	using namespace fp::constants;
+	namespace mp = boost::multiprecision;
 
-	a += fp<uint16_t,8>(0.25);
-	REQUIRE( double(a) == 1.500 );
+	SECTION( "construction and cast" ) {
+		auto x = make_fp<2>(mp::int128_t{ 33 });
+		REQUIRE( double(x) == 33. );
+	}
+	SECTION( "addition" ) {
+		auto x = make_fp<0>(mp::int128_t{ 33 }) >> int_<3>;
+		auto y = make_fp<2>(mp::int128_t{ 17 }) >> int_<2>;
+		auto z = x + y;
+		REQUIRE( double(z) == ((33. / 8.) + (17. / 4.)) );
+	}
+	SECTION( "subtraction" ) {
+		auto x = make_fp(mp::int128_t{ 449 }) >> int_<5>;
+		auto y = make_fp(mp::int128_t{ 353 }) >> int_<4>;
+		auto z = x - y;
+		REQUIRE( double(z) == ((449. / 32.) - (353. / 16.)) );
+	}
+	SECTION( "multiplication" ) {
+		auto x = make_fp(mp::int128_t{ 557 }) >> int_<6>;
+		auto y = make_fp(mp::int128_t{ 839 }) >> int_<7>;
+		auto z = x * y;
+		REQUIRE( double(z) == ((557. / 64.) * (839. / 128.)) );
+	}
+	SECTION( "division" ) {
+		auto x = make_fp<64>(mp::int128_t{ 881 }) >> int_<3>;
+		auto y = make_fp<0>(mp::int128_t{ 11 }) >> int_<1>;
+		auto z = x / y;
+		REQUIRE( double(z) == ((881. / 8.) / (11. / 2.)) );
+	}
+	SECTION( "modulus" ) {
+		auto x = make_fp<32>(mp::int128_t{ 881 }) >> int_<4>;
+		auto y = make_fp<0>(mp::int128_t{ 12 });
+		auto z = x % y;
+		REQUIRE( double(z) == std::fmod((881. / 16.), 12.) );
+	}
 
-	a += fp<uint16_t,4>(0.125);
-	REQUIRE( double(a) == 1.625 );
-
-	--a;
-	REQUIRE( double(a) == 0.625 );
-
-	fp<int16_t,8> b;
-	b = 0.75;
-	REQUIRE( double(b) == 0.750 );
-
-	b -= fp<int16_t,8>(1.25);
-	REQUIRE( double(b) == -0.500 );
-
-	b++;
-	REQUIRE( double(b) == 0.500 );
-
-	auto c = a * b;
-	REQUIRE( double(c) == 0.3125 );
-
-	REQUIRE( fabs(double(M_PI) - double(fp<uint64_t,32>(M_PI))) <= 2e-10 );
 }
