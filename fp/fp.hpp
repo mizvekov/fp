@@ -28,7 +28,6 @@
 #include <functional>
 #include <type_traits>
 #include <limits>
-#include <type_traits>
 
 namespace fp {
 

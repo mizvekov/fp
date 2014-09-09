@@ -36,7 +36,7 @@ IF(HG_FOUND)
 		HG_REPOSITORY ssh://hg@bitbucket.org/davidstone/bounded_integer
 		TIMEOUT 10
 		UPDATE_COMMAND ${HG_EXECUTABLE} pull
-		PATCH_COMMAND ${HG_EXECUTABLE} patch --no-commit ${CMAKE_SOURCE_DIR}/tests/bounded_integer.patch
+		PATCH_COMMAND ""
 		CONFIGURE_COMMAND ""
 		BUILD_COMMAND ""
 		INSTALL_COMMAND ""
