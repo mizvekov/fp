@@ -96,9 +96,5 @@ struct ranged_fp_test {
 	static_assert(int(NL(test12)::max()) == 147, "");
 	static_assert(test12 == fp_ranged<int>(3), "");
 
-	static constexpr auto test13 = make_fp<2>(10) << ranged_t<int, 3, 3>{};
-	static_assert(test13 == make_fp(80), "");
-	static_assert(decltype(test13)::exp{} == -1, "");
-
 #undef NL
 };

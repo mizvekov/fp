@@ -28,8 +28,17 @@
 #include <functional>
 #include <type_traits>
 #include <limits>
+#include <algorithm>
 
 #include <fp/fp.hpp>
+
+namespace stdx {
+	using namespace fp::operators;
+#define DECL template<class T, class U> constexpr
+	struct shift_right { DECL auto operator()(const T& x, const U& y) { return x >> y; } };
+	struct shift_left  { DECL auto operator()(const T& x, const U& y) { return x << y; } };
+#undef DECL
+};
 
 template<typename A> struct is_ranged : std::false_type {};
 
@@ -76,21 +85,21 @@ template<class T, T LOW = std::numeric_limits<T>::lowest(),
 
 	template<class B> constexpr auto& operator =(const B &b) { return base = ranged_t(b).base, *this; }
 
-#define DECL template<class B, class = std::enable_if_t< is_ranged<B>{} || fp::stdx::is_integral_constant<B>{} > > constexpr
-	DECL auto operator+(const B &b) const { return bin_op<rplus      , fp::stdx::plus      >(*this, proxy(b)); }
-	DECL auto operator-(const B &b) const { return bin_op<rminus     , fp::stdx::minus     >(*this, proxy(b)); }
-	DECL auto operator*(const B &b) const { return bin_op<rmultiplies, fp::stdx::multiplies>(*this, proxy(b)); }
-	DECL auto operator/(const B &b) const { return bin_op<rdivides   , fp::stdx::divides   >(*this, proxy(b)); }
+#define DECL template<class B, class = std::enable_if_t< is_ranged<B>{} || fp::detail::is_std_int_const<B>{} > > constexpr
+	DECL auto operator+(const B &b) const { return bin_op<rplus      , std::plus      <>>(*this, proxy(b)); }
+	DECL auto operator-(const B &b) const { return bin_op<rminus     , std::minus     <>>(*this, proxy(b)); }
+	DECL auto operator*(const B &b) const { return bin_op<rmultiplies, std::multiplies<>>(*this, proxy(b)); }
+	DECL auto operator/(const B &b) const { return bin_op<rdivides   , std::divides   <>>(*this, proxy(b)); }
 //	DECL auto operator%(const B &b) { return ; }
 //	DECL auto operator&(const B &b) { return ; }
 //	DECL auto operator|(const B &b) { return ; }
 //	DECL auto operator^(const B &b) { return ; }
 
-	DECL auto operator>>(const B &b) const { return bin_op<rshift_right, fp::stdx::shift_right>(*this, proxy(b)); }
-	DECL auto operator<<(const B &b) const { return bin_op<rshift_left , fp::stdx::shift_left >(*this, proxy(b)); }
+	DECL auto operator>>(const B &b) const { return bin_op<rshift_right, stdx::shift_right>(*this, proxy(b)); }
+	DECL auto operator<<(const B &b) const { return bin_op<rshift_left , stdx::shift_left >(*this, proxy(b)); }
 
-	DECL bool operator==(const B &b) const { return cmp_op<requal, fp::stdx::equal_to>(*this, proxy(b)); }
-	DECL bool operator <(const B &b) const { return cmp_op<rless , fp::stdx::less    >(*this, proxy(b)); }
+	DECL bool operator==(const B &b) const { return cmp_op<requal, std::equal_to<>>(*this, proxy(b)); }
+	DECL bool operator <(const B &b) const { return cmp_op<rless , std::less    <>>(*this, proxy(b)); }
 
 	DECL bool operator<=(const B &b) const { return *this == b || *this <  b; }
 	DECL bool operator!=(const B &b) const { return !(*this == b); }
@@ -125,7 +134,7 @@ private:
 	template<class B, class = std::enable_if_t< is_ranged<B>{} > >
 	static constexpr const B& proxy(const B &b) { return b; }
 
-	template<class B, class = std::enable_if_t< fp::stdx::is_integral_constant<B>{} > >
+	template<class B, class = std::enable_if_t< fp::detail::is_std_int_const<B>{} > >
 	static constexpr auto proxy(const B &b) { return ranged(b); }
 
 	// Binary Operator Range Operations
@@ -133,14 +142,22 @@ private:
 	DECL rplus       { static constexpr R min = A::lo + B::lo, max = A::hi + B::hi; };
 	DECL rminus      { static constexpr R min = A::lo - B::hi, max = A::hi - B::lo; };
 	DECL rmultiplies {
-		static constexpr R min = fp::stdx::min(A::lo * B::lo, A::lo * B::hi, A::hi * B::lo, A::hi * B::hi),
-		                   max = fp::stdx::max(A::lo * B::lo, A::lo * B::hi, A::hi * B::lo, A::hi * B::hi);
+		static constexpr R min = std::min(std::initializer_list<R>{
+			A::lo * B::lo, A::lo * B::hi, A::hi * B::lo, A::hi * B::hi
+		});
+		static constexpr R max = std::max(std::initializer_list<R>{
+			A::lo * B::lo, A::lo * B::hi, A::hi * B::lo, A::hi * B::hi
+		});
 	};
 	DECL rdivides {
 		static_assert(B::hi > typename B::base_type(0) || B::hi < typename B::base_type(0),
 		              "divisor range may not contain zero");
-		static constexpr R min = fp::stdx::min(A::lo / B::lo, A::lo / B::hi, A::hi / B::lo, A::hi / B::hi),
-		                   max = fp::stdx::max(A::lo / B::lo, A::lo / B::hi, A::hi / B::lo, A::hi / B::hi);
+		static constexpr R min = std::min(std::initializer_list<R>{
+			A::lo / B::lo, A::lo / B::hi, A::hi / B::lo, A::hi / B::hi
+		});
+		static constexpr R max = std::max(std::initializer_list<R>{
+			A::lo / B::lo, A::lo / B::hi, A::hi / B::lo, A::hi / B::hi
+		});
 	};
 	DECL rshift_right {
 		static constexpr R min = fp::detail::const_shift<-intmax_t(B::hi)>(A::lo),
@@ -162,24 +179,19 @@ private:
 	//
 
 	// Generic Binary Operator Implementation
-	template<template<class,class> class BOP, class A, A A_LOW, A A_MAX, class B, B B_LOW, B B_MAX>
-	static constexpr auto bin_op_raw(const ranged_t<A, A_LOW, A_MAX> &a, const ranged_t<B, B_LOW, B_MAX> &b) {
-		return BOP<decltype(a.base), decltype(b.base)>()(a.base, b.base);
-	}
-
-	template<template<class,class,class> class ROP, template<class,class> class BOP,
+	template<template<class,class,class> class ROP, class BOP,
 		class A, A A_LOW, A A_MAX, class B, B B_LOW, B B_MAX>
 	static constexpr auto bin_op(const ranged_t<A, A_LOW, A_MAX> &a, const ranged_t<B, B_LOW, B_MAX> &b) {
-		auto res = bin_op_raw<BOP>(a, b);
+		auto res = BOP{}(a.base, b.base);
 		using rop = ROP<std::decay_t<decltype(a)>, std::decay_t<decltype(b)>, decltype(res)>;
 		return ranged_t<decltype(res), rop::min, rop::max>(res);
 	}
 
-	template<template<class,class> class ROP, template<class,class> class BOP,
+	template<template<class,class> class ROP, class BOP,
 		class A, A A_LOW, A A_MAX, class B, B B_LOW, B B_MAX>
 	static constexpr bool cmp_op(const ranged_t<A, A_LOW, A_MAX> &a, const ranged_t<B, B_LOW, B_MAX> &b) {
 		using rop = ROP<std::decay_t<decltype(a)>, std::decay_t<decltype(b)>>;
-		return rop::always_true || (!rop::always_false && bin_op_raw<BOP>(a, b));
+		return rop::always_true || (!rop::always_false && BOP{}(a.base, b.base));
 	}
 	//
 
@@ -192,9 +204,12 @@ template<class A, A A_LOW, A A_MAX> struct numeric_limits<ranged_t<A,A_LOW,A_MAX
 
 	static constexpr bool is_specialized = base::is_specialized;
 
-	static constexpr A min()    noexcept { return fp::stdx::max(A_LOW, base::min()); }
-	static constexpr A max()    noexcept { return A_MAX; }
-	static constexpr A lowest() noexcept { return A_LOW; }
+	static constexpr auto min()    noexcept {
+		using t = ::std::integral_constant<A, std::max(A_LOW, base::min())>;
+		return ranged_t<A, t{}, t{}>{};
+	}
+	static constexpr auto max()    noexcept { return ranged_t<A, A_MAX, A_MAX>{}; }
+	static constexpr auto lowest() noexcept { return ranged_t<A, A_LOW, A_LOW>{}; }
 
 	static constexpr int  digits       = base::digits;
 	static constexpr int  digits10     = base::digits10;
@@ -204,8 +219,8 @@ template<class A, A A_LOW, A A_MAX> struct numeric_limits<ranged_t<A,A_LOW,A_MAX
 	static constexpr bool is_exact     = base::is_exact;
 	static constexpr int  radix        = base::radix;
 
-	static constexpr A epsilon()     noexcept { return base::epsilon(); }
-	static constexpr A round_error() noexcept { return base::round_error(); }
+	static constexpr auto epsilon()     noexcept { return base::epsilon(); }
+	static constexpr auto round_error() noexcept { return base::round_error(); }
 
 	static constexpr int  min_exponent   = base::min_exponent;
 	static constexpr int  min_exponent10 = base::min_exponent10;
@@ -234,8 +249,3 @@ template<class A, A A_LOW, A A_MAX> struct numeric_limits<ranged_t<A,A_LOW,A_MAX
 }
 
 template<class A, A A_LOW, A A_MAX> struct is_ranged<ranged_t<A, A_LOW, A_MAX>> : std::true_type {};
-
-namespace fp { namespace stdx {
-template<class A, A A_LOW, A A_MAX> struct is_integral_constant<ranged_t<A, A_LOW, A_MAX>> :
-	std::integral_constant<bool, A_LOW == A_MAX> {};
-}; };

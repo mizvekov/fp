@@ -28,6 +28,7 @@
 #include <functional>
 #include <type_traits>
 #include <limits>
+#include <algorithm>
 
 namespace fp {
 
@@ -62,48 +63,23 @@ namespace operators { // constant shift for builtin arithmetic types
 namespace detail {
 	using namespace operators;
 
-	template<intmax_t B, class T> static constexpr auto const_shift(const T &a, ::std::enable_if_t<B >= 0>* = 0) {
+	template<intmax_t B, class T>
+	static constexpr auto const_shift(const T &a, ::std::enable_if_t<B >= 0>* = 0) {
 		return a << ::std::integral_constant<decltype(B), B>{};
 	}
-	template<intmax_t B, class T> static constexpr auto const_shift(const T &a, ::std::enable_if_t<B <  0>* = 0) {
+	template<intmax_t B, class T>
+	static constexpr auto const_shift(const T &a, ::std::enable_if_t<B <  0>* = 0) {
 		return a >> ::std::integral_constant<decltype(B), -B>{};
 	}
 };
 
-namespace stdx {
-	using namespace operators;
-
-#define DECL template<class T, class U>
-	DECL struct plus       { constexpr auto operator()(const T& x, const U& y) { return x + y; } };
-	DECL struct minus      { constexpr auto operator()(const T& x, const U& y) { return x - y; } };
-	DECL struct multiplies { constexpr auto operator()(const T& x, const U& y) { return x * y; } };
-	DECL struct divides    { constexpr auto operator()(const T& x, const U& y) { return x / y; } };
-	DECL struct modulus    { constexpr auto operator()(const T& x, const U& y) { return x % y; } };
-	DECL struct bit_and    { constexpr auto operator()(const T& x, const U& y) { return x & y; } };
-	DECL struct bit_or     { constexpr auto operator()(const T& x, const U& y) { return x | y; } };
-	DECL struct bit_xor    { constexpr auto operator()(const T& x, const U& y) { return x ^ y; } };
-
-	DECL struct shift_right { constexpr auto operator()(const T& x, const U& y) { return x >> y; } };
-	DECL struct shift_left  { constexpr auto operator()(const T& x, const U& y) { return x << y; } };
-
-	DECL struct equal_to { constexpr auto operator()(const T& x, const U& y) { return x == y; } };
-	DECL struct less     { constexpr auto operator()(const T& x, const U& y) { return x <  y; } };
-#undef DECL
-
-	template<class A> static constexpr A max(A a) { return a; }
-	template<class A, class ...Args>
-	static constexpr A max(A a, A b, Args ...args) { return max(a >= b ? a : b, args...); }
-
-	template<class A> static constexpr A min(A a) { return a; }
-	template<class A, class ...Args>
-	static constexpr A min(A a, A b, Args ...args) { return min(a <= b ? a : b, args...); }
-
-	template<class> struct is_integral_constant : ::std::false_type {};
-	template<class T, T V> struct is_integral_constant<::std::integral_constant<T,V>> : ::std::true_type {};
+namespace detail {
+	template<class       > struct is_std_int_const                                : ::std::false_type {};
+	template<class T, T V> struct is_std_int_const<::std::integral_constant<T,V>> : ::std::true_type  {};
 };
 
 namespace constants {
-	template<int I> constexpr auto int_ = std::integral_constant<int, I>{};
+	template<         int I> constexpr auto  int_ = std::integral_constant<         int, I>{};
 	template<unsigned int I> constexpr auto uint_ = std::integral_constant<unsigned int, I>{};
 };
 
@@ -116,10 +92,15 @@ template<class T, intmax_t E = 0, class BASE = decltype(detail::const_shift<E>(T
 
 	// Public Constructors
 	fp_t() = default;
+
 	constexpr fp_t(const base_type &b, bool): base(b) {}
-	template<class B> constexpr fp_t(const B &b, std::enable_if_t<!is_fp<B>{}>* = 0) : base(detail::const_shift<E>(b)) {}
+
+	template<class B> constexpr fp_t(const B &b, std::enable_if_t<!is_fp<B>{}>* = 0) :
+		base(detail::const_shift<E>(b)) {}
+
 	template<class B>
-	constexpr fp_t(const B &b, std::enable_if_t< is_fp<B>{}>* = 0) : base(detail::const_shift<E - typename B::exp{}>(b.base)) {}
+	constexpr fp_t(const B &b, std::enable_if_t< is_fp<B>{}>* = 0) :
+		base(detail::const_shift<E - typename B::exp{}>(b.base)) {}
 	//
 
 	// Operators Implementation
@@ -129,86 +110,82 @@ template<class T, intmax_t E = 0, class BASE = decltype(detail::const_shift<E>(T
 	template<class B> constexpr auto& operator =(const B &b) { return base = fp_t<T,E>(b).base, *this; }
 
 #define DECL template<class B, class = std::enable_if_t< is_fp<B>{} > > constexpr
-	DECL auto operator+(const B &b) const { return bin_op<emax,stdx::plus      >(*this, b); }
-	DECL auto operator-(const B &b) const { return bin_op<emax,stdx::minus     >(*this, b); }
-	DECL auto operator*(const B &b) const { return bin_op<esum,stdx::multiplies>(*this, b); }
-	DECL auto operator/(const B &b) const { return bin_op<esub,stdx::divides   >(*this, b); }
-	DECL auto operator%(const B &b) const { return bin_op<emax,stdx::modulus   >(*this, b); }
-	DECL auto operator&(const B &b) const { return bin_op<emax,stdx::bit_and   >(*this, b); }
-	DECL auto operator|(const B &b) const { return bin_op<emax,stdx::bit_or    >(*this, b); }
-	DECL auto operator^(const B &b) const { return bin_op<emax,stdx::bit_xor   >(*this, b); }
+	DECL auto operator+(const B &b) const { return bin_op<emax,std::plus      <>>(*this, b); }
+	DECL auto operator-(const B &b) const { return bin_op<emax,std::minus     <>>(*this, b); }
+	DECL auto operator*(const B &b) const { return bin_op<esum,std::multiplies<>>(*this, b); }
+	DECL auto operator/(const B &b) const { return bin_op<esub,std::divides   <>>(*this, b); }
+	DECL auto operator%(const B &b) const { return bin_op<emax,std::modulus   <>>(*this, b); }
+	DECL auto operator&(const B &b) const { return bin_op<emax,std::bit_and   <>>(*this, b); }
+	DECL auto operator|(const B &b) const { return bin_op<emax,std::bit_or    <>>(*this, b); }
+	DECL auto operator^(const B &b) const { return bin_op<emax,std::bit_xor   <>>(*this, b); }
 
-	template<class B, intmax_t Eb>
-	constexpr bool operator==(const fp_t<B,Eb> &b) const { return bin_op_raw<emin,stdx::equal_to,E,Eb>(base, b.base); }
+	DECL bool operator==(const B &b) const {
+		return bin_op_raw<emin,std::equal_to<>,E,typename B::exp{}>(base, b.base);
+	}
+	DECL bool operator <(const B &b) const {
+		return bin_op_raw<emin,std::less    <>,E,typename B::exp{}>(base, b.base);
+	}
 
-	template<class B, intmax_t Eb>
-	constexpr bool operator <(const fp_t<B,Eb> &b) const { return bin_op_raw<emin,stdx::less    ,E,Eb>(base, b.base); }
-
+	// These implement the remaining operators based on the previous ones
 	DECL bool operator<=(const B &b) const { return *this == b || *this <  b; }
 	DECL bool operator!=(const B &b) const { return !(*this == b); }
 	DECL bool operator >(const B &b) const { return !(*this <= b); }
 	DECL bool operator>=(const B &b) const { return !(*this <  b); }
 
-	template<class B> constexpr auto operator<<(const B &b) const { return shift_l<B>(b); }
-	template<class B> constexpr auto operator>>(const B &b) const { return shift_r<B>(b); }
-
-	constexpr auto operator+() const { return make<E>(+base); }
-	constexpr auto operator-() const { return make<E>(-base); }
-	constexpr auto operator~() const { return make<E>(~base); }
-	//
-
-	// These implement the remaining operators based on the previous ones
 	DECL auto& operator+=(const B &b) { return *this = *this + b; }
 	DECL auto& operator-=(const B &b) { return *this = *this - b; }
 	DECL auto& operator*=(const B &b) { return *this = *this * b; }
 	DECL auto& operator/=(const B &b) { return *this = *this / b; }
 	DECL auto& operator%=(const B &b) { return *this = *this % b; }
+#undef DECL
 
 	template<class B> constexpr auto& operator<<=(const B &b) { return *this = *this << b; }
 	template<class B> constexpr auto& operator>>=(const B &b) { return *this = *this >> b; }
-#undef DECL
 
 	constexpr auto& operator++()    { return *this += fp_t<T,0>(1); }
 	constexpr auto& operator--()    { return *this -= fp_t<T,0>(1); }
 	constexpr auto  operator++(int) { auto ret = *this; return ++*this, ret; }
 	constexpr auto  operator--(int) { auto ret = *this; return ++*this, ret; }
 	//
+
+#define DECL template<class B, std::enable_if_t< detail::is_std_int_const<B>{}>* = nullptr> constexpr
+	DECL auto operator<<(const B & ) const { return make<E - B{}>(base     ); }
+	DECL auto operator>>(const B & ) const { return make<E + B{}>(base     ); }
+#undef  DECL
+#define DECL template<class B, std::enable_if_t<!detail::is_std_int_const<B>{}>* = nullptr> constexpr
+	DECL auto operator<<(const B &b) const { return make<E      >(base << b); }
+	DECL auto operator>>(const B &b) const { return make<E      >(base >> b); }
+#undef  DECL
+
+	constexpr auto operator+() const { return make<E>(+base); }
+	constexpr auto operator-() const { return make<E>(-base); }
+	constexpr auto operator~() const { return make<E>(~base); }
+	//
 private:
 	template<class, intmax_t, class> friend struct fp_t;
 	friend std::numeric_limits<fp_t>;
-
-	template<class B> constexpr auto shift_l(const std::enable_if_t< stdx::is_integral_constant<B>{}, B> &b) const {
-		return make<E - B::value>(base);
-	}
-	template<class B> constexpr auto shift_l(const std::enable_if_t<!stdx::is_integral_constant<B>{}, B> &b) const {
-		return make<E>(base << b);
-	}
-	template<class B> constexpr auto shift_r(const std::enable_if_t< stdx::is_integral_constant<B>{}, B> &b) const {
-		return make<E + B::value>(base);
-	}
-	template<class B> constexpr auto shift_r(const std::enable_if_t<!stdx::is_integral_constant<B>{}, B> &b) const {
-		return make<E>(base >> b);
-	}
 
 	template<intmax_t Ea, class A> static constexpr auto make(const A &a) {
 		return fp_t<decltype(detail::const_shift<-Ea>(a)), Ea, A>{ a, false };
 	}
 
 	// Exponent Operations
-	template<intmax_t Ea, intmax_t Eb> struct emax { enum { e = stdx::max(Ea,Eb), ea = e , eb = e  }; };
-	template<intmax_t Ea, intmax_t Eb> struct emin { enum { e = stdx::min(Ea,Eb), ea = e , eb = e  }; };
-	template<intmax_t Ea, intmax_t Eb> struct esum { enum { e = Ea + Eb         , ea = Ea, eb = Eb }; };
-	template<intmax_t Ea, intmax_t Eb> struct esub { enum { e = Ea - Eb         , ea = Ea, eb = Eb }; };
+	template<intmax_t Ea, intmax_t Eb> struct emax { enum { e = std::max(Ea,Eb), ea = e , eb = e  }; };
+	template<intmax_t Ea, intmax_t Eb> struct emin { enum { e = std::min(Ea,Eb), ea = e , eb = e  }; };
+	template<intmax_t Ea, intmax_t Eb> struct esum { enum { e = Ea + Eb        , ea = Ea, eb = Eb }; };
+	template<intmax_t Ea, intmax_t Eb> struct esub { enum { e = Ea - Eb        , ea = Ea, eb = Eb }; };
 	//
 
 	// Generic Binary Operator Implementation
-	template<template<intmax_t,intmax_t> class EOP, template<class,class> class BOP, intmax_t Ea, intmax_t Eb, class A, class B>
+	template<template<intmax_t,intmax_t> class EOP, class BOP,
+		intmax_t Ea, intmax_t Eb, class A, class B>
 	static constexpr auto bin_op_raw(const A &a, const B &b) {
-		auto sa = detail::const_shift<EOP<Ea,Eb>::ea - Ea>(a);
-		auto sb = detail::const_shift<EOP<Ea,Eb>::eb - Eb>(b);
-		return BOP<decltype(sa),decltype(sb)>()(sa, sb);
+		return BOP{}(
+			detail::const_shift<EOP<Ea,Eb>::ea - Ea>(a),
+			detail::const_shift<EOP<Ea,Eb>::eb - Eb>(b)
+		);
 	}
-	template<template<intmax_t,intmax_t> class EOP, template<class,class> class BOP, class A, class B>
+	template<template<intmax_t,intmax_t> class EOP, class BOP, class A, class B>
 	static constexpr auto bin_op(const A &a, const B &b) {
 		return make<EOP<typename A::exp{}, typename B::exp{}>::e>(
 			bin_op_raw<EOP,BOP, typename A::exp{}, typename B::exp{}>(a.base, b.base)
