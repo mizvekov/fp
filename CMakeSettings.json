@@ -1,0 +1,81 @@
+{
+  // See https://go.microsoft.com//fwlink//?linkid=834763 for more information about this file.
+  "configurations": [
+    {
+      "name": "x86-Debug",
+      "inheritEnvironments": [ "msvc_x86" ],
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${env.USERPROFILE}\\CMakeBuilds\\${workspaceHash}\\build\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "variables": [
+	{
+		"name": "CMAKE_TOOLCHAIN_FILE",
+		"value": "C:\\src\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+	},
+        {
+          "name": "CMAKE_CXX_FLAGS",
+          "value": "/permissive- /utf-8 /EHsc"
+        }
+      ]
+    },
+    {
+      "name": "x86-Release",
+      "inheritEnvironments": [ "msvc_x86" ],
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "buildRoot": "${env.USERPROFILE}\\CMakeBuilds\\${workspaceHash}\\build\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "variables": [
+	{
+		"name": "CMAKE_TOOLCHAIN_FILE",
+		"value": "C:\\src\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+	},
+        {
+          "name": "CMAKE_CXX_FLAGS",
+          "value": "/permissive- /utf-8 /EHsc"
+        }
+      ]
+    },
+    {
+      "name": "x64-Debug",
+      "inheritEnvironments": [ "msvc_x64" ],
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${env.USERPROFILE}\\CMakeBuilds\\${workspaceHash}\\build\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "variables": [
+	{
+		"name": "CMAKE_TOOLCHAIN_FILE",
+		"value": "C:\\src\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+	},
+        {
+          "name": "CMAKE_CXX_FLAGS",
+          "value": "/permissive- /utf-8 /EHsc"
+        }
+      ]
+    },
+    {
+      "name": "x64-Release",
+      "inheritEnvironments": [ "msvc_x64" ],
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "buildRoot": "${env.USERPROFILE}\\CMakeBuilds\\${workspaceHash}\\build\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "variables": [
+	{
+		"name": "CMAKE_TOOLCHAIN_FILE",
+		"value": "C:\\src\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+	},
+        {
+          "name": "CMAKE_CXX_FLAGS",
+          "value": "/permissive- /utf-8 /EHsc"
+        }
+      ]
+    }
+  ]
+}

@@ -1,39 +1,27 @@
-# Copyright (c) 2014, Matheus Izvekov <mizvekov@gmail.com>
+# Copyright (c) 2018, Matheus Izvekov <mizvekov@gmail.com>
 # All rights reserved.
 
-INCLUDE(ExternalProject)
-FIND_PACKAGE(Git REQUIRED)
+add_library(ranged INTERFACE)
+target_sources(ranged INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ranged.hpp)
+target_include_directories(ranged INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(ranged INTERFACE cxx_std_14)
 
-ExternalProject_Add(
-	catch
-	PREFIX ${CMAKE_BINARY_DIR}/catch
-	GIT_REPOSITORY https://github.com/philsquared/Catch.git
-	TIMEOUT 10
-	UPDATE_COMMAND ${GIT_EXECUTABLE} pull
-	CONFIGURE_COMMAND ""
-	BUILD_COMMAND ""
-	INSTALL_COMMAND ""
-	LOG_DOWNLOAD ON
-)
-ExternalProject_Get_Property(catch source_dir)
-INCLUDE_DIRECTORIES(. ${source_dir}/include)
+add_subdirectory(static)
 
-ADD_SUBDIRECTORY(static)
+include(ExternalProject)
 
-ADD_LIBRARY(catch_main catch_main.cc)
-TARGET_LINK_LIBRARIES(catch_main c++abi)
-ADD_DEPENDENCIES(catch_main catch)
+find_package(Catch2 CONFIG REQUIRED)
 
-ADD_EXECUTABLE(simple simple.cc)
-TARGET_LINK_LIBRARIES(simple catch_main)
-ADD_TEST(simple simple)
+add_executable(simple simple.cc)
+target_link_libraries(simple fp Catch2::Catch)
+add_test(simple simple)
 
-FIND_PACKAGE(Hg)
-IF(HG_FOUND)
+find_package(Hg)
+if(HG_FOUND)
 	ExternalProject_Add(
 		bounded_integer
 		PREFIX ${CMAKE_BINARY_DIR}/bounded_integer
-		HG_REPOSITORY ssh://hg@bitbucket.org/davidstone/bounded_integer
+		HG_REPOSITORY https://bitbucket.org/davidstone/bounded_integer
 		TIMEOUT 10
 		UPDATE_COMMAND ${HG_EXECUTABLE} pull
 		PATCH_COMMAND ""
@@ -43,28 +31,26 @@ IF(HG_FOUND)
 		LOG_DOWNLOAD ON
 	)
 	ExternalProject_Get_Property(bounded_integer source_dir)
-	INCLUDE_DIRECTORIES(${source_dir})
 
-	ADD_EXECUTABLE(bounded_integer_test bounded_integer.cc)
-	TARGET_LINK_LIBRARIES(bounded_integer_test catch_main)
-	ADD_DEPENDENCIES(bounded_integer_test bounded_integer)
-	ADD_TEST(bounded_integer bounded_integer_test)
-ENDIF()
+	add_executable(bounded_integer_test bounded_integer.cc)
+	target_link_libraries(bounded_integer_test fp Catch2::Catch)
+	target_include_directories(bounded_integer_test PRIVATE ${source_dir}/include)
+	target_compile_features(bounded_integer_test PUBLIC cxx_std_17)
+	add_dependencies(bounded_integer_test bounded_integer)
+	add_test(bounded_integer bounded_integer_test)
+endif()
 
-FIND_PACKAGE(Boost 1.56.0)
+find_package(Boost 1.56.0 OPTIONAL_COMPONENTS exception)
+if(TARGET Boost::boost AND TARGET Boost::exception)
+	add_executable(rational rational.cc)
+	target_link_libraries(rational fp Boost::boost Boost::exception Catch2::Catch)
+	add_test(rational rational)
 
-IF(Boost_FOUND)
-	INCLUDE_DIRECTORIES(Boost_INCLUDE_DIRS)
+	add_executable(cpp_int cpp_int.cc)
+	target_link_libraries(cpp_int fp Boost::boost Boost::exception Catch2::Catch)
+	add_test(cpp_int cpp_int)
 
-	ADD_EXECUTABLE(rational rational.cc)
-	TARGET_LINK_LIBRARIES(rational catch_main)
-	ADD_TEST(rational rational)
-
-	ADD_EXECUTABLE(cpp_int cpp_int.cc)
-	TARGET_LINK_LIBRARIES(cpp_int catch_main)
-	ADD_TEST(cpp_int cpp_int)
-
-	ADD_EXECUTABLE(cpp_bin_float cpp_bin_float.cc)
-	TARGET_LINK_LIBRARIES(cpp_bin_float catch_main)
-	ADD_TEST(cpp_bin_float cpp_bin_float)
-ENDIF()
+	add_executable(cpp_bin_float cpp_bin_float.cc)
+	target_link_libraries(cpp_bin_float fp Boost::boost Boost::exception Catch2::Catch)
+	add_test(cpp_bin_float cpp_bin_float)
+endif()

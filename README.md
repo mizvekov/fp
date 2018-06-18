@@ -47,7 +47,7 @@ std::cout << double(std::numeric_limits<decltype(z)>::max()); // prints 31.25
 
 ```
 
-It needs at least clang 3.4 to compile, with `-std=c++1y`.
+It needs at least clang 3.4 to compile.
 Unit tests are included, and these can be built using CMake.
 
 Example building and running tests on unix system:
@@ -132,8 +132,8 @@ then `fp_t<T>` will not support modulus either.
 License
 -------
 
-BSD
+ISC
 
-Copyright (c) 2014, Matheus Izvekov <mizvekov@gmail.com>
+Copyright (c) 2018, Matheus Izvekov <mizvekov@gmail.com>
 
 All rights reserved.

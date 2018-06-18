@@ -1,13 +1,13 @@
-# Copyright (c) 2014, Matheus Izvekov <mizvekov@gmail.com>
+# Copyright (c) 2018, Matheus Izvekov <mizvekov@gmail.com>
 # All rights reserved.
 
-PROJECT(fp CXX)
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
+project(fp LANGUAGES CXX)
+include(CTest)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+add_library(fp INTERFACE)
+target_sources(fp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fp/fp.hpp)
+target_include_directories(fp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(fp INTERFACE cxx_std_14)
 
-SET(CMAKE_CXX_FLAGS "-std=c++1y -stdlib=libc++ -O0" CACHE STRING "" FORCE)
-
-INCLUDE_DIRECTORIES(.)
-
-ENABLE_TESTING()
-ADD_SUBDIRECTORY(tests)
+add_subdirectory(tests)

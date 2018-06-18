@@ -1,26 +1,17 @@
 /*
- * Copyright (c) 2014, Matheus Izvekov <mizvekov@gmail.com>
- * All rights reserved.
+ * Copyright (c) 2018, Matheus Izvekov <mizvekov@gmail.com>
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
 #pragma once
@@ -40,11 +31,11 @@ namespace detail {
 	template<class A> struct mexp2<0,A> { static constexpr A value = 1.0; };
 	//
 	template<class T, class B, B V>
-	constexpr auto builtin_const_shift(const std::enable_if_t<std::is_integral<T>{},T> &a) {
+	constexpr auto builtin_const_shift(const std::enable_if_t<std::is_integral<T>::value,T> &a) {
 		return V > 0 ? a * mexp2<V,T>::value : a / mexp2<-V,T>::value;
 	}
 	template<class T, class B, B V>
-	constexpr auto builtin_const_shift(const std::enable_if_t<std::is_floating_point<T>{},T> &a) {
+	constexpr auto builtin_const_shift(const std::enable_if_t<std::is_floating_point<T>::value,T> &a) {
 		return a * mexp2<V,T>::value;
 	}
 };
@@ -93,18 +84,18 @@ template<class T, intmax_t E = 0, class BASE = decltype(detail::const_shift<E>(T
 	// Public Constructors
 	fp_t() = default;
 
-	constexpr fp_t(const base_type &b, bool): base(b) {}
+	constexpr explicit fp_t(const base_type &b, bool) : base(b) {}
 
-	template<class B> constexpr fp_t(const B &b, std::enable_if_t<!is_fp<B>{}>* = 0) :
+	template<class B> constexpr fp_t(const B &b, std::enable_if_t<!is_fp<B>::value>* = 0) :
 		base(detail::const_shift<E>(b)) {}
 
 	template<class B>
-	constexpr fp_t(const B &b, std::enable_if_t< is_fp<B>{}>* = 0) :
-		base(detail::const_shift<E - typename B::exp{}>(b.base)) {}
+	constexpr fp_t(const B &b, std::enable_if_t< is_fp<B>::value>* = 0) :
+		base(detail::const_shift<E - B::exp::value>(b.base)) {}
 	//
 
 	// Operators Implementation
-	template<class U, class = std::enable_if_t< !is_fp<U>{} >>
+	template<class U, class = std::enable_if_t< !is_fp<U>::value >>
 	explicit constexpr operator U() const { return detail::const_shift<-E>(U(base)); }
 
 	template<class B> constexpr auto& operator =(const B &b) { return base = fp_t<T,E>(b).base, *this; }
@@ -209,11 +200,13 @@ template<class T, int E, class BASE> struct numeric_limits<fp::fp_t<T,E,BASE>> {
 	using type = fp::fp_t<T,E,BASE>;
 	using base = numeric_limits<BASE>;
 
-	static constexpr bool is_specialized = base::is_specialized;
+	static_assert(base::is_specialized, "no std::numeric_limits specialization for base type");
 
-	static constexpr type min()    noexcept { return { base::min()   , false }; }
-	static constexpr type max()    noexcept { return { base::max()   , false }; }
-	static constexpr type lowest() noexcept { return { base::lowest(), false }; }
+	static constexpr bool is_specialized = true;
+
+	static constexpr auto min()    noexcept { return type{ base::min()   , false }; }
+	static constexpr auto max()    noexcept { return type{ base::max()   , false }; }
+	static constexpr auto lowest() noexcept { return type{ base::lowest(), false }; }
 
 	static constexpr int  digits       = base::digits;
 	static constexpr int  digits10     = base::digits10;
@@ -237,10 +230,10 @@ template<class T, int E, class BASE> struct numeric_limits<fp::fp_t<T,E,BASE>> {
 	static constexpr float_denorm_style has_denorm = base::has_denorm;
 	static constexpr bool has_denorm_loss = base::has_denorm_loss;
 
-	static constexpr type infinity()      noexcept { return { base::infinity()     , false }; }
-	static constexpr type quiet_NaN()     noexcept { return { base::quiet_NaN()    , false }; }
-	static constexpr type signaling_NaN() noexcept { return { base::signaling_NaN(), false }; }
-	static constexpr type denorm_min()    noexcept { return { base::denorm_min()   , false }; }
+	static constexpr auto infinity()      noexcept { return type{ base::infinity()     , false }; }
+	static constexpr auto quiet_NaN()     noexcept { return type{ base::quiet_NaN()    , false }; }
+	static constexpr auto signaling_NaN() noexcept { return type{ base::signaling_NaN(), false }; }
+	static constexpr auto denorm_min()    noexcept { return type{ base::denorm_min()   , false }; }
 
 	static constexpr bool is_iec559  = base::is_iec559;
 	static constexpr bool is_bounded = base::is_bounded;
